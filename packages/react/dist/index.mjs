@@ -35,7 +35,7 @@ var chatApi = {
    * Connect to chat session
    */
   async connect(params, signal) {
-    return fetchWithAuth("/api/v1/chat/connect", {
+    return fetchWithAuth("/chat/connect", {
       method: "POST",
       body: JSON.stringify(params),
       signal
@@ -45,7 +45,7 @@ var chatApi = {
    * Refresh access token
    */
   async refreshToken(refreshToken, signal) {
-    return fetchWithAuth("/api/v1/chat/refresh", {
+    return fetchWithAuth("/chat/refresh", {
       method: "POST",
       body: JSON.stringify({ refresh_token: refreshToken }),
       signal
@@ -61,19 +61,19 @@ var channelsApi = {
     if (options.type) params.append("type", options.type);
     if (options.limit) params.append("limit", String(options.limit));
     const query = params.toString() ? `?${params.toString()}` : "";
-    return fetchWithAuth(`/api/v1/channels${query}`, { signal });
+    return fetchWithAuth(`/channels${query}`, { signal });
   },
   /**
    * Get channel by ID
    */
   async get(channelId, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}`, { signal });
+    return fetchWithAuth(`/channels/${channelId}`, { signal });
   },
   /**
    * Get or create DM channel
    */
   async getOrCreateDM(userId, signal) {
-    return fetchWithAuth("/api/v1/channels/dm", {
+    return fetchWithAuth("/channels/dm", {
       method: "POST",
       body: JSON.stringify({ user_id: userId }),
       signal
@@ -102,7 +102,7 @@ var channelsApi = {
    * Get channel members
    */
   async getMembers(channelId, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/members`, { signal });
+    return fetchWithAuth(`/channels/${channelId}/members`, { signal });
   },
   /**
    * Update channel
@@ -124,13 +124,15 @@ var messagesApi = {
     if (options.limit) params.append("limit", String(options.limit));
     if (options.before) params.append("before", options.before);
     const query = params.toString() ? `?${params.toString()}` : "";
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages${query}`, { signal });
+    return fetchWithAuth(`/channels/${channelId}/messages${query}`, {
+      signal
+    });
   },
   /**
    * Send a message
    */
   async send(channelId, data, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages`, {
+    return fetchWithAuth(`/channels/${channelId}/messages`, {
       method: "POST",
       body: JSON.stringify(data),
       signal
@@ -140,7 +142,7 @@ var messagesApi = {
    * Update a message
    */
   async update(channelId, messageId, data, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/${messageId}`, {
+    return fetchWithAuth(`/channels/${channelId}/messages/${messageId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
       signal
@@ -150,7 +152,7 @@ var messagesApi = {
    * Delete a message
    */
   async delete(channelId, messageId, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/${messageId}`, {
+    return fetchWithAuth(`/channels/${channelId}/messages/${messageId}`, {
       method: "DELETE",
       signal
     });
@@ -159,7 +161,7 @@ var messagesApi = {
    * Mark messages as delivered
    */
   async markDelivered(channelId, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/delivered`, {
+    return fetchWithAuth(`/channels/${channelId}/messages/delivered`, {
       method: "POST",
       signal
     });
@@ -168,7 +170,7 @@ var messagesApi = {
    * Mark messages as read
    */
   async markRead(channelId, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/read`, {
+    return fetchWithAuth(`/channels/${channelId}/messages/read`, {
       method: "POST",
       signal
     });
@@ -179,18 +181,21 @@ var reactionsApi = {
    * Add reaction to a message
    */
   async add(channelId, messageId, emoji, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/${messageId}/reactions`, {
-      method: "POST",
-      body: JSON.stringify({ emoji }),
-      signal
-    });
+    return fetchWithAuth(
+      `/channels/${channelId}/messages/${messageId}/reactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ emoji }),
+        signal
+      }
+    );
   },
   /**
    * Remove reaction from a message
    */
   async remove(channelId, messageId, emoji, signal) {
     return fetchWithAuth(
-      `/api/v1/channels/${channelId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
+      `/channels/${channelId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
       { method: "DELETE", signal }
     );
   }
@@ -200,7 +205,7 @@ var filesApi = {
    * Get upload URL
    */
   async getUploadUrl(data, signal) {
-    return fetchWithAuth("/api/v1/files/upload-url", {
+    return fetchWithAuth("/files/upload-url", {
       method: "POST",
       body: JSON.stringify(data),
       signal
@@ -210,7 +215,7 @@ var filesApi = {
    * Confirm file upload
    */
   async confirm(fileId, signal) {
-    return fetchWithAuth("/api/v1/files", {
+    return fetchWithAuth("/files", {
       method: "POST",
       body: JSON.stringify({ file_id: fileId }),
       signal
@@ -220,7 +225,7 @@ var filesApi = {
    * Get download URL
    */
   async getDownloadUrl(fileId, signal) {
-    return fetchWithAuth(`/api/v1/files/${fileId}/download`, { signal });
+    return fetchWithAuth(`/files/${fileId}/download`, { signal });
   }
 };
 var usersApi = {
@@ -228,13 +233,15 @@ var usersApi = {
    * Search users
    */
   async search(query, signal) {
-    return fetchWithAuth(`/api/v1/users/search?q=${encodeURIComponent(query)}`, { signal });
+    return fetchWithAuth(`/users/search?q=${encodeURIComponent(query)}`, {
+      signal
+    });
   },
   /**
    * Get user by ID
    */
   async get(userId, signal) {
-    return fetchWithAuth(`/api/v1/users/${userId}`, { signal });
+    return fetchWithAuth(`/users/${userId}`, { signal });
   }
 };
 
@@ -245,15 +252,28 @@ var MAX_RECONNECT_ATTEMPTS = 5;
 var MAX_RECONNECT_DELAY = 3e4;
 var PING_INTERVAL = 3e4;
 var SESSION_STORAGE_KEY = "@aegischat/activeChannel";
-function useChat(options) {
-  const { config, role, clientId, initialSession, autoConnect = true, onMessage, onTyping, onConnectionChange } = options;
-  const [session, setSession] = useState(initialSession ?? null);
+function useChat(options = {}) {
+  const {
+    config,
+    role,
+    clientId,
+    initialSession,
+    autoConnect = true,
+    onMessage,
+    onTyping,
+    onConnectionChange
+  } = options;
+  const [session, setSession] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [activeChannelId, setActiveChannelIdState] = useState(null);
+  const [activeChannelId, setActiveChannelIdState] = useState(
+    null
+  );
   const [channels, setChannels] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [typingUsers, setTypingUsers] = useState({});
+  const [typingUsers, setTypingUsers] = useState(
+    {}
+  );
   const [isLoadingChannels, setIsLoadingChannels] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
@@ -266,11 +286,16 @@ function useChat(options) {
   const isManualDisconnect = useRef(false);
   const oldestMessageId = useRef(null);
   const activeChannelIdRef = useRef(null);
-  const configRef = useRef(config);
-  const sessionRef = useRef(initialSession ?? null);
+  const sessionRef = useRef(null);
+  const roleRef = useRef(void 0);
+  const clientIdRef = useRef(void 0);
+  const autoConnectRef = useRef(true);
+  const onMessageRef = useRef(void 0);
+  const onTypingRef = useRef(void 0);
+  const onConnectionChangeRef = useRef(void 0);
   useEffect(() => {
-    configRef.current = config;
-  }, [config]);
+    activeChannelIdRef.current = activeChannelId;
+  }, [activeChannelId]);
   useEffect(() => {
     activeChannelIdRef.current = activeChannelId;
   }, [activeChannelId]);
@@ -288,26 +313,29 @@ function useChat(options) {
       }
     }
   }, []);
-  const fetchFromComms = useCallback(async (path, fetchOptions = {}) => {
-    const currentSession = sessionRef.current;
-    if (!currentSession) {
-      throw new Error("Chat session not initialized");
-    }
-    const response = await fetch(`${currentSession.api_url}${path}`, {
-      ...fetchOptions,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${currentSession.access_token}`,
-        ...fetchOptions.headers
+  const fetchFromComms = useCallback(
+    async (path, fetchOptions = {}) => {
+      const currentSession = sessionRef.current;
+      if (!currentSession) {
+        throw new Error("Chat session not initialized");
       }
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return data.data || data;
-  }, []);
+      const response = await fetch(`${currentSession.api_url}${path}`, {
+        ...fetchOptions,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentSession.access_token}`,
+          ...fetchOptions.headers
+        }
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      return data.data || data;
+    },
+    []
+  );
   const clearTimers = useCallback(() => {
     if (reconnectTimeout.current) {
       clearTimeout(reconnectTimeout.current);
@@ -318,111 +346,141 @@ function useChat(options) {
       pingInterval.current = null;
     }
   }, []);
-  const handleWebSocketMessage = useCallback((data) => {
-    const currentActiveChannelId = activeChannelIdRef.current;
-    console.log("[AegisChat] WebSocket message received:", data.type, data);
-    switch (data.type) {
-      case "message.new": {
-        const newMessage = data.payload;
-        if (newMessage.channel_id === currentActiveChannelId) {
-          setMessages((prev) => {
-            const existingIndex = prev.findIndex(
-              (m) => m.tempId && m.content === newMessage.content && m.status === "sending"
+  const handleWebSocketMessage = useCallback(
+    (data) => {
+      const currentActiveChannelId = activeChannelIdRef.current;
+      console.log("[AegisChat] WebSocket message received:", data.type, data);
+      switch (data.type) {
+        case "message.new": {
+          const newMessage = data.payload;
+          if (newMessage.channel_id === currentActiveChannelId) {
+            setMessages((prev) => {
+              const existingIndex = prev.findIndex(
+                (m) => m.tempId && m.content === newMessage.content && m.status === "sending"
+              );
+              if (existingIndex !== -1) {
+                const updated = [...prev];
+                updated[existingIndex] = { ...newMessage, status: "sent" };
+                return updated;
+              }
+              if (prev.some((m) => m.id === newMessage.id)) return prev;
+              return [...prev, { ...newMessage, status: "delivered" }];
+            });
+            onMessageRef.current?.(newMessage);
+          }
+          setChannels((prev) => {
+            const updated = prev.map(
+              (ch) => ch.id === newMessage.channel_id ? {
+                ...ch,
+                last_message: {
+                  id: newMessage.id,
+                  content: newMessage.content,
+                  created_at: newMessage.created_at,
+                  sender: {
+                    id: newMessage.sender_id,
+                    display_name: "Unknown",
+                    status: "online"
+                  }
+                },
+                unread_count: ch.id === currentActiveChannelId ? 0 : ch.unread_count + 1
+              } : ch
             );
-            if (existingIndex !== -1) {
-              const updated = [...prev];
-              updated[existingIndex] = { ...newMessage, status: "sent" };
-              return updated;
-            }
-            if (prev.some((m) => m.id === newMessage.id)) return prev;
-            return [...prev, { ...newMessage, status: "delivered" }];
+            return updated.sort((a, b) => {
+              const timeA = a.last_message?.created_at || "";
+              const timeB = b.last_message?.created_at || "";
+              return timeB.localeCompare(timeA);
+            });
           });
-          onMessage?.(newMessage);
+          break;
         }
-        setChannels((prev) => {
-          const updated = prev.map(
-            (ch) => ch.id === newMessage.channel_id ? {
-              ...ch,
-              last_message: {
-                id: newMessage.id,
-                content: newMessage.content,
-                created_at: newMessage.created_at,
-                sender: { id: newMessage.sender_id, display_name: "Unknown", status: "online" }
-              },
-              unread_count: ch.id === currentActiveChannelId ? 0 : ch.unread_count + 1
-            } : ch
-          );
-          return updated.sort((a, b) => {
-            const timeA = a.last_message?.created_at || "";
-            const timeB = b.last_message?.created_at || "";
-            return timeB.localeCompare(timeA);
-          });
-        });
-        break;
-      }
-      case "message.updated": {
-        const updatedMessage = data.payload;
-        setMessages((prev) => prev.map((m) => m.id === updatedMessage.id ? updatedMessage : m));
-        break;
-      }
-      case "message.deleted": {
-        const { message_id } = data.payload;
-        setMessages((prev) => prev.map((m) => m.id === message_id ? { ...m, deleted: true } : m));
-        break;
-      }
-      case "message.delivered":
-      case "message.read": {
-        const { message_id, channel_id, status } = data.payload;
-        if (channel_id === currentActiveChannelId) {
+        case "message.updated": {
+          const updatedMessage = data.payload;
           setMessages(
-            (prev) => prev.map((m) => m.id === message_id ? { ...m, status: status || "delivered" } : m)
+            (prev) => prev.map((m) => m.id === updatedMessage.id ? updatedMessage : m)
           );
+          break;
         }
-        break;
-      }
-      case "message.delivered.batch":
-      case "message.read.batch": {
-        const { channel_id } = data.payload;
-        if (channel_id === currentActiveChannelId) {
+        case "message.deleted": {
+          const { message_id } = data.payload;
           setMessages(
-            (prev) => prev.map((m) => m.status === "sent" || m.status === "delivered" ? { ...m, status: data.type === "message.delivered.batch" ? "delivered" : "read" } : m)
+            (prev) => prev.map(
+              (m) => m.id === message_id ? { ...m, deleted: true } : m
+            )
           );
+          break;
         }
-        break;
+        case "message.delivered":
+        case "message.read": {
+          const { message_id, channel_id, status } = data.payload;
+          if (channel_id === currentActiveChannelId) {
+            setMessages(
+              (prev) => prev.map(
+                (m) => m.id === message_id ? {
+                  ...m,
+                  status: status || "delivered"
+                } : m
+              )
+            );
+          }
+          break;
+        }
+        case "message.delivered.batch":
+        case "message.read.batch": {
+          const { channel_id } = data.payload;
+          if (channel_id === currentActiveChannelId) {
+            setMessages(
+              (prev) => prev.map(
+                (m) => m.status === "sent" || m.status === "delivered" ? {
+                  ...m,
+                  status: data.type === "message.delivered.batch" ? "delivered" : "read"
+                } : m
+              )
+            );
+          }
+          break;
+        }
+        case "typing.start": {
+          const { channel_id, user } = data.payload;
+          const typingUser = {
+            id: user.id,
+            displayName: user.display_name,
+            avatarUrl: user.avatar_url,
+            startedAt: Date.now()
+          };
+          setTypingUsers((prev) => ({
+            ...prev,
+            [channel_id]: [
+              ...(prev[channel_id] || []).filter((u) => u.id !== user.id),
+              typingUser
+            ]
+          }));
+          onTypingRef.current?.(channel_id, typingUser);
+          break;
+        }
+        case "typing.stop": {
+          const { channel_id, user_id } = data.payload;
+          setTypingUsers((prev) => ({
+            ...prev,
+            [channel_id]: (prev[channel_id] || []).filter(
+              (u) => u.id !== user_id
+            )
+          }));
+          break;
+        }
+        case "pong":
+          break;
+        default:
+          console.log("[AegisChat] Unhandled message type:", data.type);
       }
-      case "typing.start": {
-        const { channel_id, user } = data.payload;
-        const typingUser = {
-          id: user.id,
-          displayName: user.display_name,
-          avatarUrl: user.avatar_url,
-          startedAt: Date.now()
-        };
-        setTypingUsers((prev) => ({
-          ...prev,
-          [channel_id]: [...(prev[channel_id] || []).filter((u) => u.id !== user.id), typingUser]
-        }));
-        onTyping?.(channel_id, typingUser);
-        break;
-      }
-      case "typing.stop": {
-        const { channel_id, user_id } = data.payload;
-        setTypingUsers((prev) => ({
-          ...prev,
-          [channel_id]: (prev[channel_id] || []).filter((u) => u.id !== user_id)
-        }));
-        break;
-      }
-      case "pong":
-        break;
-      default:
-        console.log("[AegisChat] Unhandled message type:", data.type);
-    }
-  }, [onMessage, onTyping]);
+    },
+    []
+  );
   const connectWebSocket = useCallback(() => {
     const currentSession = sessionRef.current;
     if (!currentSession?.websocket_url || !currentSession?.access_token) {
-      console.warn("[AegisChat] Cannot connect WebSocket - missing session or token");
+      console.warn(
+        "[AegisChat] Cannot connect WebSocket - missing session or token"
+      );
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -437,15 +495,21 @@ function useChat(options) {
     ws.onopen = () => {
       console.log("[AegisChat] WebSocket connected");
       setIsConnected(true);
+      setIsConnecting(false);
       reconnectAttempts.current = 0;
-      onConnectionChange?.(true);
+      onConnectionChangeRef.current?.(true);
       pingInterval.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "ping" }));
         }
       }, PING_INTERVAL);
       if (activeChannelIdRef.current) {
-        ws.send(JSON.stringify({ type: "channel.join", payload: { channel_id: activeChannelIdRef.current } }));
+        ws.send(
+          JSON.stringify({
+            type: "channel.join",
+            payload: { channel_id: activeChannelIdRef.current }
+          })
+        );
       }
     };
     ws.onmessage = (event) => {
@@ -459,10 +523,14 @@ function useChat(options) {
     ws.onclose = () => {
       console.log("[AegisChat] WebSocket disconnected");
       setIsConnected(false);
+      setIsConnecting(false);
       clearTimers();
-      onConnectionChange?.(false);
+      onConnectionChangeRef.current?.(false);
       if (!isManualDisconnect.current && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
-        const delay = Math.min(RECONNECT_INTERVAL * Math.pow(2, reconnectAttempts.current), MAX_RECONNECT_DELAY);
+        const delay = Math.min(
+          RECONNECT_INTERVAL * Math.pow(2, reconnectAttempts.current),
+          MAX_RECONNECT_DELAY
+        );
         console.log(`[AegisChat] Reconnecting in ${delay}ms...`);
         reconnectTimeout.current = setTimeout(() => {
           reconnectAttempts.current++;
@@ -474,19 +542,18 @@ function useChat(options) {
       console.error("[AegisChat] WebSocket error:", error);
     };
     wsRef.current = ws;
-  }, [clearTimers, handleWebSocketMessage, onConnectionChange]);
+  }, [clearTimers, handleWebSocketMessage]);
   const connect = useCallback(async () => {
     console.log("[AegisChat] connect() called");
-    const targetSession = sessionRef.current ?? initialSession;
+    const targetSession = sessionRef.current;
     if (!targetSession) {
-      throw new Error("Either config or initialSession must be provided");
-    }
-    if (sessionRef.current) {
-      console.log("[AegisChat] Session exists, calling connectWebSocket directly");
-      connectWebSocket();
+      console.log("[AegisChat] No session available, skipping connect");
       return;
     }
-    console.log("[AegisChat] Using initialSession, calling connectWebSocket directly");
+    if (!autoConnectRef.current) {
+      console.log("[AegisChat] autoConnect is false, skipping connect");
+      return;
+    }
     connectWebSocket();
   }, [connectWebSocket]);
   const disconnect = useCallback(() => {
@@ -514,48 +581,72 @@ function useChat(options) {
       setIsLoadingChannels(false);
     }
   }, []);
-  const selectChannel = useCallback(async (channelId) => {
-    const currentActiveChannelId = activeChannelIdRef.current;
-    setActiveChannelId(channelId);
-    setMessages([]);
-    setHasMoreMessages(true);
-    oldestMessageId.current = null;
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      if (currentActiveChannelId) {
-        wsRef.current.send(JSON.stringify({ type: "channel.leave", payload: { channel_id: currentActiveChannelId } }));
-      }
-      wsRef.current.send(JSON.stringify({ type: "channel.join", payload: { channel_id: channelId } }));
-    }
-    setIsLoadingMessages(true);
-    try {
-      const response = await fetchFromComms(`/channels/${channelId}/messages?limit=50`);
-      setMessages(response.messages || []);
-      setHasMoreMessages(response.has_more);
-      if (response.oldest_id) {
-        oldestMessageId.current = response.oldest_id;
-      }
-      await markAsRead(channelId);
-      setChannels((prev) => prev.map((ch) => ch.id === channelId ? { ...ch, unread_count: 0 } : ch));
-    } catch (error) {
-      console.error("[AegisChat] Failed to load messages:", error);
+  const selectChannel = useCallback(
+    async (channelId) => {
+      const currentActiveChannelId = activeChannelIdRef.current;
+      setActiveChannelId(channelId);
       setMessages([]);
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [setActiveChannelId, fetchFromComms]);
-  const markAsRead = useCallback(async (channelId) => {
-    try {
-      await fetchFromComms(`/channels/${channelId}/read`, { method: "POST" });
-    } catch (error) {
-      console.error("[AegisChat] Failed to mark as read:", error);
-    }
-  }, [fetchFromComms]);
+      setHasMoreMessages(true);
+      oldestMessageId.current = null;
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        if (currentActiveChannelId) {
+          wsRef.current.send(
+            JSON.stringify({
+              type: "channel.leave",
+              payload: { channel_id: currentActiveChannelId }
+            })
+          );
+        }
+        wsRef.current.send(
+          JSON.stringify({
+            type: "channel.join",
+            payload: { channel_id: channelId }
+          })
+        );
+      }
+      setIsLoadingMessages(true);
+      try {
+        const response = await fetchFromComms(
+          `/channels/${channelId}/messages?limit=50`
+        );
+        setMessages(response.messages || []);
+        setHasMoreMessages(response.has_more);
+        if (response.oldest_id) {
+          oldestMessageId.current = response.oldest_id;
+        }
+        await markAsRead(channelId);
+        setChannels(
+          (prev) => prev.map(
+            (ch) => ch.id === channelId ? { ...ch, unread_count: 0 } : ch
+          )
+        );
+      } catch (error) {
+        console.error("[AegisChat] Failed to load messages:", error);
+        setMessages([]);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [setActiveChannelId, fetchFromComms]
+  );
+  const markAsRead = useCallback(
+    async (channelId) => {
+      try {
+        await fetchFromComms(`/channels/${channelId}/read`, { method: "POST" });
+      } catch (error) {
+        console.error("[AegisChat] Failed to mark as read:", error);
+      }
+    },
+    [fetchFromComms]
+  );
   const loadMoreMessages = useCallback(async () => {
     if (!activeChannelId || !hasMoreMessages || isLoadingMessages) return;
     setIsLoadingMessages(true);
     try {
       const params = oldestMessageId.current ? `?before=${oldestMessageId.current}&limit=50` : "?limit=50";
-      const response = await fetchFromComms(`/channels/${activeChannelId}/messages${params}`);
+      const response = await fetchFromComms(
+        `/channels/${activeChannelId}/messages${params}`
+      );
       setMessages((prev) => [...response.messages || [], ...prev]);
       setHasMoreMessages(response.has_more);
       if (response.oldest_id) {
@@ -567,138 +658,234 @@ function useChat(options) {
       setIsLoadingMessages(false);
     }
   }, [activeChannelId, hasMoreMessages, isLoadingMessages, fetchFromComms]);
-  const sendMessage = useCallback(async (content, msgOptions = {}) => {
-    const currentActiveChannelId = activeChannelIdRef.current;
-    const currentSession = sessionRef.current;
-    if (!currentActiveChannelId || !content.trim() || !currentSession) return;
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const trimmedContent = content.trim();
-    const optimisticMessage = {
-      id: tempId,
-      tempId,
-      channel_id: currentActiveChannelId,
-      sender_id: currentSession.comms_user_id,
-      content: trimmedContent,
-      type: msgOptions.type || "text",
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-      status: "sending",
-      metadata: msgOptions.metadata || {}
-    };
-    setMessages((prev) => [...prev, optimisticMessage]);
-    const now = (/* @__PURE__ */ new Date()).toISOString();
-    setChannels((prev) => {
-      const updated = prev.map(
-        (ch) => ch.id === currentActiveChannelId ? {
-          ...ch,
-          last_message: {
-            id: tempId,
-            content: trimmedContent,
-            created_at: now,
-            sender: { id: currentSession.comms_user_id, display_name: "You", status: "online" }
+  const sendMessage = useCallback(
+    async (content, msgOptions = {}) => {
+      const currentActiveChannelId = activeChannelIdRef.current;
+      const currentSession = sessionRef.current;
+      if (!currentActiveChannelId || !content.trim() || !currentSession) return;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const trimmedContent = content.trim();
+      const optimisticMessage = {
+        id: tempId,
+        tempId,
+        channel_id: currentActiveChannelId,
+        sender_id: currentSession.comms_user_id,
+        content: trimmedContent,
+        type: msgOptions.type || "text",
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        updated_at: (/* @__PURE__ */ new Date()).toISOString(),
+        status: "sending",
+        metadata: msgOptions.metadata || {}
+      };
+      setMessages((prev) => [...prev, optimisticMessage]);
+      const now = (/* @__PURE__ */ new Date()).toISOString();
+      setChannels((prev) => {
+        const updated = prev.map(
+          (ch) => ch.id === currentActiveChannelId ? {
+            ...ch,
+            last_message: {
+              id: tempId,
+              content: trimmedContent,
+              created_at: now,
+              sender: {
+                id: currentSession.comms_user_id,
+                display_name: "You",
+                status: "online"
+              }
+            }
+          } : ch
+        );
+        return updated.sort((a, b) => {
+          const timeA = a.last_message?.created_at || "";
+          const timeB = b.last_message?.created_at || "";
+          return timeB.localeCompare(timeA);
+        });
+      });
+      try {
+        await fetchFromComms(
+          `/channels/${currentActiveChannelId}/messages`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              content: trimmedContent,
+              type: msgOptions.type || "text",
+              parent_id: msgOptions.parent_id,
+              metadata: msgOptions.metadata
+            })
           }
-        } : ch
-      );
-      return updated.sort((a, b) => {
-        const timeA = a.last_message?.created_at || "";
-        const timeB = b.last_message?.created_at || "";
-        return timeB.localeCompare(timeA);
-      });
-    });
-    try {
-      await fetchFromComms(`/channels/${currentActiveChannelId}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ content: trimmedContent, type: msgOptions.type || "text", parent_id: msgOptions.parent_id, metadata: msgOptions.metadata })
-      });
-    } catch (error) {
-      console.error("[AegisChat] Failed to send message:", error);
-      setMessages(
-        (prev) => prev.map(
-          (m) => m.tempId === tempId ? { ...m, status: "failed", errorMessage: error instanceof Error ? error.message : "Failed to send" } : m
-        )
-      );
-      throw error;
-    }
-  }, [fetchFromComms]);
-  const uploadFile = useCallback(async (file) => {
-    const currentSession = sessionRef.current;
-    if (!currentSession) return null;
-    const fileId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    setUploadProgress((prev) => [...prev, { fileId, fileName: file.name, progress: 0, status: "pending" }]);
-    try {
-      setUploadProgress((prev) => prev.map((p) => p.fileId === fileId ? { ...p, status: "uploading", progress: 10 } : p));
-      const uploadUrlResponse = await fetchFromComms("/files/upload-url", {
-        method: "POST",
-        body: JSON.stringify({ file_name: file.name, file_type: file.type || "application/octet-stream", file_size: file.size })
-      });
-      setUploadProgress((prev) => prev.map((p) => p.fileId === fileId ? { ...p, fileId: uploadUrlResponse.file_id, progress: 30 } : p));
-      const uploadResponse = await fetch(uploadUrlResponse.upload_url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type || "application/octet-stream" }
-      });
-      if (!uploadResponse.ok) throw new Error(`Upload failed: ${uploadResponse.statusText}`);
-      setUploadProgress((prev) => prev.map((p) => p.fileId === uploadUrlResponse.file_id ? { ...p, status: "confirming", progress: 70 } : p));
-      const confirmResponse = await fetchFromComms("/files", {
-        method: "POST",
-        body: JSON.stringify({ file_id: uploadUrlResponse.file_id })
-      });
-      setUploadProgress((prev) => prev.map((p) => p.fileId === uploadUrlResponse.file_id ? { ...p, status: "complete", progress: 100 } : p));
-      setTimeout(() => setUploadProgress((prev) => prev.filter((p) => p.fileId !== uploadUrlResponse.file_id)), 2e3);
-      return confirmResponse.file;
-    } catch (error) {
-      console.error("[AegisChat] Failed to upload file:", error);
-      setUploadProgress((prev) => prev.map((p) => p.fileId === fileId ? { ...p, status: "error", error: error instanceof Error ? error.message : "Upload failed" } : p));
-      setTimeout(() => setUploadProgress((prev) => prev.filter((p) => p.fileId !== fileId)), 5e3);
-      return null;
-    }
-  }, [fetchFromComms]);
-  const sendMessageWithFiles = useCallback(async (content, files, msgOptions = {}) => {
-    const currentActiveChannelId = activeChannelIdRef.current;
-    const currentSession = sessionRef.current;
-    if (!currentActiveChannelId || !content.trim() && files.length === 0 || !currentSession) return;
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const trimmedContent = content.trim();
-    const optimisticMessage = {
-      id: tempId,
-      tempId,
-      channel_id: currentActiveChannelId,
-      sender_id: currentSession.comms_user_id,
-      content: trimmedContent || `Uploading ${files.length} file(s)...`,
-      type: "file",
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-      status: "sending",
-      metadata: { ...msgOptions.metadata, files: files.map((f) => ({ id: `temp-${f.name}`, filename: f.name, mime_type: f.type, size: f.size, url: "" })) }
-    };
-    setMessages((prev) => [...prev, optimisticMessage]);
-    try {
-      const uploadedFiles = [];
-      for (const file of files) {
-        const attachment = await uploadFile(file);
-        if (attachment) uploadedFiles.push(attachment);
+        );
+      } catch (error) {
+        console.error("[AegisChat] Failed to send message:", error);
+        setMessages(
+          (prev) => prev.map(
+            (m) => m.tempId === tempId ? {
+              ...m,
+              status: "failed",
+              errorMessage: error instanceof Error ? error.message : "Failed to send"
+            } : m
+          )
+        );
+        throw error;
       }
-      const messageType = uploadedFiles.length > 0 && !trimmedContent ? "file" : "text";
-      await fetchFromComms(`/channels/${currentActiveChannelId}/messages`, {
-        method: "POST",
-        body: JSON.stringify({
-          content: trimmedContent || (uploadedFiles.length > 0 ? `Shared ${uploadedFiles.length} file(s)` : ""),
-          type: msgOptions.type || messageType,
-          parent_id: msgOptions.parent_id,
-          metadata: { ...msgOptions.metadata, files: uploadedFiles },
-          file_ids: uploadedFiles.map((f) => f.id)
-        })
-      });
-    } catch (error) {
-      console.error("[AegisChat] Failed to send message with files:", error);
-      setMessages((prev) => prev.map((m) => m.tempId === tempId ? { ...m, status: "failed", errorMessage: error instanceof Error ? error.message : "Failed to send" } : m));
-      throw error;
-    }
-  }, [fetchFromComms, uploadFile]);
+    },
+    [fetchFromComms]
+  );
+  const uploadFile = useCallback(
+    async (file) => {
+      const currentSession = sessionRef.current;
+      if (!currentSession) return null;
+      const fileId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      setUploadProgress((prev) => [
+        ...prev,
+        { fileId, fileName: file.name, progress: 0, status: "pending" }
+      ]);
+      try {
+        setUploadProgress(
+          (prev) => prev.map(
+            (p) => p.fileId === fileId ? { ...p, status: "uploading", progress: 10 } : p
+          )
+        );
+        const uploadUrlResponse = await fetchFromComms("/files/upload-url", {
+          method: "POST",
+          body: JSON.stringify({
+            file_name: file.name,
+            file_type: file.type || "application/octet-stream",
+            file_size: file.size
+          })
+        });
+        setUploadProgress(
+          (prev) => prev.map(
+            (p) => p.fileId === fileId ? { ...p, fileId: uploadUrlResponse.file_id, progress: 30 } : p
+          )
+        );
+        const uploadResponse = await fetch(uploadUrlResponse.upload_url, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type || "application/octet-stream" }
+        });
+        if (!uploadResponse.ok)
+          throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+        setUploadProgress(
+          (prev) => prev.map(
+            (p) => p.fileId === uploadUrlResponse.file_id ? { ...p, status: "confirming", progress: 70 } : p
+          )
+        );
+        const confirmResponse = await fetchFromComms(
+          "/files",
+          {
+            method: "POST",
+            body: JSON.stringify({ file_id: uploadUrlResponse.file_id })
+          }
+        );
+        setUploadProgress(
+          (prev) => prev.map(
+            (p) => p.fileId === uploadUrlResponse.file_id ? { ...p, status: "complete", progress: 100 } : p
+          )
+        );
+        setTimeout(
+          () => setUploadProgress(
+            (prev) => prev.filter((p) => p.fileId !== uploadUrlResponse.file_id)
+          ),
+          2e3
+        );
+        return confirmResponse.file;
+      } catch (error) {
+        console.error("[AegisChat] Failed to upload file:", error);
+        setUploadProgress(
+          (prev) => prev.map(
+            (p) => p.fileId === fileId ? {
+              ...p,
+              status: "error",
+              error: error instanceof Error ? error.message : "Upload failed"
+            } : p
+          )
+        );
+        setTimeout(
+          () => setUploadProgress(
+            (prev) => prev.filter((p) => p.fileId !== fileId)
+          ),
+          5e3
+        );
+        return null;
+      }
+    },
+    [fetchFromComms]
+  );
+  const sendMessageWithFiles = useCallback(
+    async (content, files, msgOptions = {}) => {
+      const currentActiveChannelId = activeChannelIdRef.current;
+      const currentSession = sessionRef.current;
+      if (!currentActiveChannelId || !content.trim() && files.length === 0 || !currentSession)
+        return;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const trimmedContent = content.trim();
+      const optimisticMessage = {
+        id: tempId,
+        tempId,
+        channel_id: currentActiveChannelId,
+        sender_id: currentSession.comms_user_id,
+        content: trimmedContent || `Uploading ${files.length} file(s)...`,
+        type: "file",
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        updated_at: (/* @__PURE__ */ new Date()).toISOString(),
+        status: "sending",
+        metadata: {
+          ...msgOptions.metadata,
+          files: files.map((f) => ({
+            id: `temp-${f.name}`,
+            filename: f.name,
+            mime_type: f.type,
+            size: f.size,
+            url: ""
+          }))
+        }
+      };
+      setMessages((prev) => [...prev, optimisticMessage]);
+      try {
+        const uploadedFiles = [];
+        for (const file of files) {
+          const attachment = await uploadFile(file);
+          if (attachment) uploadedFiles.push(attachment);
+        }
+        const messageType = uploadedFiles.length > 0 && !trimmedContent ? "file" : "text";
+        await fetchFromComms(
+          `/channels/${currentActiveChannelId}/messages`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              content: trimmedContent || (uploadedFiles.length > 0 ? `Shared ${uploadedFiles.length} file(s)` : ""),
+              type: msgOptions.type || messageType,
+              parent_id: msgOptions.parent_id,
+              metadata: { ...msgOptions.metadata, files: uploadedFiles },
+              file_ids: uploadedFiles.map((f) => f.id)
+            })
+          }
+        );
+      } catch (error) {
+        console.error("[AegisChat] Failed to send message with files:", error);
+        setMessages(
+          (prev) => prev.map(
+            (m) => m.tempId === tempId ? {
+              ...m,
+              status: "failed",
+              errorMessage: error instanceof Error ? error.message : "Failed to send"
+            } : m
+          )
+        );
+        throw error;
+      }
+    },
+    [fetchFromComms, uploadFile]
+  );
   const stopTyping = useCallback(() => {
     const currentActiveChannelId = activeChannelIdRef.current;
     if (!currentActiveChannelId || !wsRef.current) return;
-    wsRef.current.send(JSON.stringify({ type: "typing.stop", payload: { channel_id: currentActiveChannelId } }));
+    wsRef.current.send(
+      JSON.stringify({
+        type: "typing.stop",
+        payload: { channel_id: currentActiveChannelId }
+      })
+    );
     if (typingTimeout.current) {
       clearTimeout(typingTimeout.current);
       typingTimeout.current = null;
@@ -707,46 +894,108 @@ function useChat(options) {
   const startTyping = useCallback(() => {
     const currentActiveChannelId = activeChannelIdRef.current;
     if (!currentActiveChannelId || !wsRef.current) return;
-    wsRef.current.send(JSON.stringify({ type: "typing.start", payload: { channel_id: currentActiveChannelId } }));
+    wsRef.current.send(
+      JSON.stringify({
+        type: "typing.start",
+        payload: { channel_id: currentActiveChannelId }
+      })
+    );
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(stopTyping, TYPING_TIMEOUT);
   }, [stopTyping]);
-  const createDMWithUser = useCallback(async (userId) => {
-    try {
-      const channel = await fetchFromComms("/channels/dm", {
-        method: "POST",
-        body: JSON.stringify({ user_id: userId })
-      });
-      await refreshChannels();
-      return channel.id;
-    } catch (error) {
-      console.error("[AegisChat] Failed to create DM:", error);
-      return null;
-    }
-  }, [fetchFromComms, refreshChannels]);
-  const retryMessage = useCallback(async (tempId) => {
-    const failedMessage = messages.find((m) => m.tempId === tempId && m.status === "failed");
-    const currentActiveChannelId = activeChannelIdRef.current;
-    if (!failedMessage || !currentActiveChannelId) return;
-    setMessages((prev) => prev.map((m) => m.tempId === tempId ? { ...m, status: "sending", errorMessage: void 0 } : m));
-    try {
-      await fetchFromComms(`/channels/${currentActiveChannelId}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ content: failedMessage.content, type: failedMessage.type, metadata: failedMessage.metadata })
-      });
-    } catch (error) {
-      console.error("[AegisChat] Failed to retry message:", error);
-      setMessages((prev) => prev.map((m) => m.tempId === tempId ? { ...m, status: "failed", errorMessage: error instanceof Error ? error.message : "Failed to send" } : m));
-    }
-  }, [messages, fetchFromComms]);
+  const createDMWithUser = useCallback(
+    async (userId) => {
+      try {
+        const channel = await fetchFromComms("/channels/dm", {
+          method: "POST",
+          body: JSON.stringify({ user_id: userId })
+        });
+        await refreshChannels();
+        return channel.id;
+      } catch (error) {
+        console.error("[AegisChat] Failed to create DM:", error);
+        return null;
+      }
+    },
+    [fetchFromComms, refreshChannels]
+  );
+  const retryMessage = useCallback(
+    async (tempId) => {
+      const failedMessage = messages.find(
+        (m) => m.tempId === tempId && m.status === "failed"
+      );
+      const currentActiveChannelId = activeChannelIdRef.current;
+      if (!failedMessage || !currentActiveChannelId) return;
+      setMessages(
+        (prev) => prev.map(
+          (m) => m.tempId === tempId ? { ...m, status: "sending", errorMessage: void 0 } : m
+        )
+      );
+      try {
+        await fetchFromComms(
+          `/channels/${currentActiveChannelId}/messages`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              content: failedMessage.content,
+              type: failedMessage.type,
+              metadata: failedMessage.metadata
+            })
+          }
+        );
+      } catch (error) {
+        console.error("[AegisChat] Failed to retry message:", error);
+        setMessages(
+          (prev) => prev.map(
+            (m) => m.tempId === tempId ? {
+              ...m,
+              status: "failed",
+              errorMessage: error instanceof Error ? error.message : "Failed to send"
+            } : m
+          )
+        );
+      }
+    },
+    [messages, fetchFromComms]
+  );
   const deleteFailedMessage = useCallback((tempId) => {
     setMessages((prev) => prev.filter((m) => m.tempId !== tempId));
   }, []);
+  const setup = useCallback((options2) => {
+    const {
+      config: config2,
+      role: role2,
+      clientId: clientId2,
+      initialSession: initialSession2,
+      autoConnect: autoConnect2 = true,
+      onMessage: onMessage2,
+      onTyping: onTyping2,
+      onConnectionChange: onConnectionChange2
+    } = options2;
+    roleRef.current = role2;
+    clientIdRef.current = clientId2;
+    autoConnectRef.current = autoConnect2;
+    onMessageRef.current = onMessage2;
+    onTypingRef.current = onTyping2;
+    onConnectionChangeRef.current = onConnectionChange2;
+    if (initialSession2) {
+      sessionRef.current = initialSession2;
+      if (!config2) {
+        const url = initialSession2.api_url;
+        const normalizedUrl = url.includes("/api/v1") || url.includes("/v") ? url : `${url}/api/v1`;
+        configureApiClient({
+          baseUrl: normalizedUrl,
+          getAccessToken: async () => sessionRef.current?.access_token || ""
+        });
+      }
+      setSession(initialSession2);
+    }
+  }, []);
   useEffect(() => {
-    if (session && !isConnected && !isConnecting && autoConnect) {
+    if (session && !isConnected && !isConnecting && autoConnectRef.current) {
       connectWebSocket();
     }
-  }, [session, isConnected, isConnecting, autoConnect, connectWebSocket]);
+  }, [session, isConnected, isConnecting, connectWebSocket]);
   useEffect(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.onmessage = (event) => {
@@ -754,7 +1003,10 @@ function useChat(options) {
           const data = JSON.parse(event.data);
           handleWebSocketMessage(data);
         } catch (error) {
-          console.error("[AegisChat] Failed to parse WebSocket message:", error);
+          console.error(
+            "[AegisChat] Failed to parse WebSocket message:",
+            error
+          );
         }
       };
     }
@@ -806,7 +1058,8 @@ function useChat(options) {
     createDMWithUser,
     retryMessage,
     deleteFailedMessage,
-    markAsRead
+    markAsRead,
+    setup
   };
 }
 

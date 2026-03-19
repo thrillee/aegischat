@@ -14,10 +14,10 @@ import type {
   ReactionSummary,
   FileAttachment,
   UploadUrlResponse,
-} from '../types';
+} from "../types";
 
-let baseUrl = '';
-let getAccessToken: () => Promise<string> | string = () => '';
+let baseUrl = "";
+let getAccessToken: () => Promise<string> | string = () => "";
 let onUnauthorized: (() => void) | undefined;
 
 export function configureApiClient(config: {
@@ -32,16 +32,16 @@ export function configureApiClient(config: {
 
 async function fetchWithAuth<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
-  const token = await (typeof getAccessToken === 'function' 
-    ? getAccessToken() 
+  const token = await (typeof getAccessToken === "function"
+    ? getAccessToken()
     : getAccessToken);
 
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
       ...options.headers,
     },
@@ -49,7 +49,7 @@ async function fetchWithAuth<T>(
 
   if (response.status === 401) {
     onUnauthorized?.();
-    throw new Error('Unauthorized');
+    throw new Error("Unauthorized");
   }
 
   if (!response.ok) {
@@ -66,10 +66,10 @@ export const chatApi = {
    */
   async connect(
     params: ChatConnectParams,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<ChatSession>> {
-    return fetchWithAuth('/api/v1/chat/connect', {
-      method: 'POST',
+    return fetchWithAuth("/chat/connect", {
+      method: "POST",
       body: JSON.stringify(params),
       signal,
     });
@@ -80,10 +80,10 @@ export const chatApi = {
    */
   async refreshToken(
     refreshToken: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ access_token: string; expires_in: number }>> {
-    return fetchWithAuth('/api/v1/chat/refresh', {
-      method: 'POST',
+    return fetchWithAuth("/chat/refresh", {
+      method: "POST",
       body: JSON.stringify({ refresh_token: refreshToken }),
       signal,
     });
@@ -96,20 +96,23 @@ export const channelsApi = {
    */
   async list(
     options: { type?: string; limit?: number } = {},
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ channels: ChannelListItem[] }>> {
     const params = new URLSearchParams();
-    if (options.type) params.append('type', options.type);
-    if (options.limit) params.append('limit', String(options.limit));
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return fetchWithAuth(`/api/v1/channels${query}`, { signal });
+    if (options.type) params.append("type", options.type);
+    if (options.limit) params.append("limit", String(options.limit));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return fetchWithAuth(`/channels${query}`, { signal });
   },
 
   /**
    * Get channel by ID
    */
-  async get(channelId: string, signal?: AbortSignal): Promise<ApiResponse<Channel>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}`, { signal });
+  async get(
+    channelId: string,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Channel>> {
+    return fetchWithAuth(`/channels/${channelId}`, { signal });
   },
 
   /**
@@ -117,10 +120,10 @@ export const channelsApi = {
    */
   async getOrCreateDM(
     userId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<Channel>> {
-    return fetchWithAuth('/api/v1/channels/dm', {
-      method: 'POST',
+    return fetchWithAuth("/channels/dm", {
+      method: "POST",
       body: JSON.stringify({ user_id: userId }),
       signal,
     });
@@ -130,11 +133,16 @@ export const channelsApi = {
    * Create channel
    */
   async create(
-    data: { name: string; type?: string; description?: string; metadata?: Record<string, unknown> },
-    signal?: AbortSignal
+    data: {
+      name: string;
+      type?: string;
+      description?: string;
+      metadata?: Record<string, unknown>;
+    },
+    signal?: AbortSignal,
   ): Promise<ApiResponse<Channel>> {
-    return fetchWithAuth('/api/v1/channels', {
-      method: 'POST',
+    return fetchWithAuth("/api/v1/channels", {
+      method: "POST",
       body: JSON.stringify(data),
       signal,
     });
@@ -145,10 +153,10 @@ export const channelsApi = {
    */
   async markAsRead(
     channelId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ unread_count: number }>> {
     return fetchWithAuth(`/api/v1/channels/${channelId}/read`, {
-      method: 'POST',
+      method: "POST",
       signal,
     });
   },
@@ -158,9 +166,9 @@ export const channelsApi = {
    */
   async getMembers(
     channelId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ members: UserSummary[] }>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/members`, { signal });
+    return fetchWithAuth(`/channels/${channelId}/members`, { signal });
   },
 
   /**
@@ -168,11 +176,15 @@ export const channelsApi = {
    */
   async update(
     channelId: string,
-    data: { name?: string; description?: string; metadata?: Record<string, unknown> },
-    signal?: AbortSignal
+    data: {
+      name?: string;
+      description?: string;
+      metadata?: Record<string, unknown>;
+    },
+    signal?: AbortSignal,
   ): Promise<ApiResponse<Channel>> {
     return fetchWithAuth(`/api/v1/channels/${channelId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(data),
       signal,
     });
@@ -186,13 +198,15 @@ export const messagesApi = {
   async list(
     channelId: string,
     options: { limit?: number; before?: string } = {},
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<MessagesResponse>> {
     const params = new URLSearchParams();
-    if (options.limit) params.append('limit', String(options.limit));
-    if (options.before) params.append('before', options.before);
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages${query}`, { signal });
+    if (options.limit) params.append("limit", String(options.limit));
+    if (options.before) params.append("before", options.before);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return fetchWithAuth(`/channels/${channelId}/messages${query}`, {
+      signal,
+    });
   },
 
   /**
@@ -200,11 +214,17 @@ export const messagesApi = {
    */
   async send(
     channelId: string,
-    data: { content: string; type?: string; parent_id?: string; metadata?: Record<string, unknown>; file_ids?: string[] },
-    signal?: AbortSignal
+    data: {
+      content: string;
+      type?: string;
+      parent_id?: string;
+      metadata?: Record<string, unknown>;
+      file_ids?: string[];
+    },
+    signal?: AbortSignal,
   ): Promise<ApiResponse<Message>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages`, {
-      method: 'POST',
+    return fetchWithAuth(`/channels/${channelId}/messages`, {
+      method: "POST",
       body: JSON.stringify(data),
       signal,
     });
@@ -217,10 +237,10 @@ export const messagesApi = {
     channelId: string,
     messageId: string,
     data: { content?: string; metadata?: Record<string, unknown> },
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<Message>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/${messageId}`, {
-      method: 'PATCH',
+    return fetchWithAuth(`/channels/${channelId}/messages/${messageId}`, {
+      method: "PATCH",
       body: JSON.stringify(data),
       signal,
     });
@@ -232,10 +252,10 @@ export const messagesApi = {
   async delete(
     channelId: string,
     messageId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ success: boolean }>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/${messageId}`, {
-      method: 'DELETE',
+    return fetchWithAuth(`/channels/${channelId}/messages/${messageId}`, {
+      method: "DELETE",
       signal,
     });
   },
@@ -245,10 +265,10 @@ export const messagesApi = {
    */
   async markDelivered(
     channelId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ success: boolean }>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/delivered`, {
-      method: 'POST',
+    return fetchWithAuth(`/channels/${channelId}/messages/delivered`, {
+      method: "POST",
       signal,
     });
   },
@@ -258,10 +278,10 @@ export const messagesApi = {
    */
   async markRead(
     channelId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ success: boolean }>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/read`, {
-      method: 'POST',
+    return fetchWithAuth(`/channels/${channelId}/messages/read`, {
+      method: "POST",
       signal,
     });
   },
@@ -275,13 +295,16 @@ export const reactionsApi = {
     channelId: string,
     messageId: string,
     emoji: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ reactions: ReactionSummary[] }>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/messages/${messageId}/reactions`, {
-      method: 'POST',
-      body: JSON.stringify({ emoji }),
-      signal,
-    });
+    return fetchWithAuth(
+      `/channels/${channelId}/messages/${messageId}/reactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ emoji }),
+        signal,
+      },
+    );
   },
 
   /**
@@ -291,11 +314,11 @@ export const reactionsApi = {
     channelId: string,
     messageId: string,
     emoji: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ reactions: ReactionSummary[] }>> {
     return fetchWithAuth(
-      `/api/v1/channels/${channelId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
-      { method: 'DELETE', signal }
+      `/channels/${channelId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
+      { method: "DELETE", signal },
     );
   },
 };
@@ -306,10 +329,10 @@ export const filesApi = {
    */
   async getUploadUrl(
     data: { file_name: string; file_type: string; file_size: number },
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<UploadUrlResponse>> {
-    return fetchWithAuth('/api/v1/files/upload-url', {
-      method: 'POST',
+    return fetchWithAuth("/files/upload-url", {
+      method: "POST",
       body: JSON.stringify(data),
       signal,
     });
@@ -320,10 +343,10 @@ export const filesApi = {
    */
   async confirm(
     fileId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ file: FileAttachment }>> {
-    return fetchWithAuth('/api/v1/files', {
-      method: 'POST',
+    return fetchWithAuth("/files", {
+      method: "POST",
       body: JSON.stringify({ file_id: fileId }),
       signal,
     });
@@ -334,9 +357,9 @@ export const filesApi = {
    */
   async getDownloadUrl(
     fileId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ url: string; expires_at: string }>> {
-    return fetchWithAuth(`/api/v1/files/${fileId}/download`, { signal });
+    return fetchWithAuth(`/files/${fileId}/download`, { signal });
   },
 };
 
@@ -346,16 +369,21 @@ export const usersApi = {
    */
   async search(
     query: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<ApiResponse<{ users: UserSummary[] }>> {
-    return fetchWithAuth(`/api/v1/users/search?q=${encodeURIComponent(query)}`, { signal });
+    return fetchWithAuth(`/users/search?q=${encodeURIComponent(query)}`, {
+      signal,
+    });
   },
 
   /**
    * Get user by ID
    */
-  async get(userId: string, signal?: AbortSignal): Promise<ApiResponse<UserSummary>> {
-    return fetchWithAuth(`/api/v1/users/${userId}`, { signal });
+  async get(
+    userId: string,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<UserSummary>> {
+    return fetchWithAuth(`/users/${userId}`, { signal });
   },
 };
 

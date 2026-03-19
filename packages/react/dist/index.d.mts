@@ -162,7 +162,7 @@ interface ChannelsResponse {
 
 interface UseChatOptions {
     config?: AegisConfig;
-    role: 'lawyer' | 'client';
+    role?: "lawyer" | "client";
     clientId?: string;
     initialSession?: ChatSession | null;
     autoConnect?: boolean;
@@ -204,8 +204,9 @@ interface UseChatReturn {
     retryMessage: (tempId: string) => Promise<void>;
     deleteFailedMessage: (tempId: string) => void;
     markAsRead: (channelId: string) => Promise<void>;
+    setup: (options: UseChatOptions) => void;
 }
-declare function useChat(options: UseChatOptions): UseChatReturn;
+declare function useChat(options?: Partial<UseChatOptions>): UseChatReturn;
 
 interface UseAutoReadOptions {
     onMarkAsRead?: (channelId: string) => void;
