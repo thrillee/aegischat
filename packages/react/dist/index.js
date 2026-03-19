@@ -286,8 +286,8 @@ var MAX_RECONNECT_DELAY = 3e4;
 var PING_INTERVAL = 3e4;
 var SESSION_STORAGE_KEY = "@aegischat/activeChannel";
 function useChat(options) {
-  const { config, role, clientId, autoConnect = true, onMessage, onTyping, onConnectionChange } = options;
-  const [session, setSession] = (0, import_react.useState)(null);
+  const { config, role, clientId, initialSession, autoConnect = true, onMessage, onTyping, onConnectionChange } = options;
+  const [session, setSession] = (0, import_react.useState)(initialSession ?? null);
   const [isConnected, setIsConnected] = (0, import_react.useState)(false);
   const [isConnecting, setIsConnecting] = (0, import_react.useState)(false);
   const [activeChannelId, setActiveChannelIdState] = (0, import_react.useState)(null);
@@ -307,16 +307,13 @@ function useChat(options) {
   const oldestMessageId = (0, import_react.useRef)(null);
   const activeChannelIdRef = (0, import_react.useRef)(null);
   const configRef = (0, import_react.useRef)(config);
-  const sessionRef = (0, import_react.useRef)(null);
+  const sessionRef = (0, import_react.useRef)(initialSession ?? null);
   (0, import_react.useEffect)(() => {
     configRef.current = config;
   }, [config]);
   (0, import_react.useEffect)(() => {
     activeChannelIdRef.current = activeChannelId;
   }, [activeChannelId]);
-  (0, import_react.useEffect)(() => {
-    sessionRef.current = session;
-  }, [session]);
   const getActiveChannelId = (0, import_react.useCallback)(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -520,24 +517,18 @@ function useChat(options) {
   }, [clearTimers, handleWebSocketMessage, onConnectionChange]);
   const connect = (0, import_react.useCallback)(async () => {
     console.log("[AegisChat] connect() called");
+    const targetSession = sessionRef.current ?? initialSession;
+    if (!targetSession) {
+      throw new Error("Either config or initialSession must be provided");
+    }
     if (sessionRef.current) {
       console.log("[AegisChat] Session exists, calling connectWebSocket directly");
       connectWebSocket();
       return;
     }
-    try {
-      setIsConnecting(true);
-      console.log("[AegisChat] Fetching chat session...");
-      const result = await chatApi.connect({ role, client_id: clientId });
-      console.log("[AegisChat] Chat session received:", result);
-      setSession(result.data);
-      setIsConnecting(false);
-    } catch (error) {
-      console.error("[AegisChat] Failed to get chat session:", error);
-      setIsConnecting(false);
-      throw error;
-    }
-  }, [role, clientId, connectWebSocket]);
+    console.log("[AegisChat] Using initialSession, calling connectWebSocket directly");
+    connectWebSocket();
+  }, [connectWebSocket]);
   const disconnect = (0, import_react.useCallback)(() => {
     isManualDisconnect.current = true;
     clearTimers();
@@ -790,9 +781,6 @@ function useChat(options) {
   }, [messages, fetchFromComms]);
   const deleteFailedMessage = (0, import_react.useCallback)((tempId) => {
     setMessages((prev) => prev.filter((m) => m.tempId !== tempId));
-  }, []);
-  (0, import_react.useEffect)(() => {
-    connect();
   }, []);
   (0, import_react.useEffect)(() => {
     if (session && !isConnected && !isConnecting && autoConnect) {

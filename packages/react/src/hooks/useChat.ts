@@ -88,7 +88,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   const oldestMessageId = useRef<string | null>(null);
   const activeChannelIdRef = useRef<string | null>(null);
   const configRef = useRef(config);
-  const sessionRef = useRef<ChatSession | null>(null);
+  const sessionRef = useRef<ChatSession | null>(initialSession ?? null);
 
   useEffect(() => {
     configRef.current = config;
@@ -98,9 +98,6 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     activeChannelIdRef.current = activeChannelId;
   }, [activeChannelId]);
 
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
 
   const getActiveChannelId = useCallback((): string | null => {
     if (typeof window === 'undefined') return null;
@@ -327,7 +324,8 @@ export function useChat(options: UseChatOptions): UseChatReturn {
 
   const connect = useCallback(async () => {
     console.log('[AegisChat] connect() called');
-    if (!sessionRef.current && !config) {
+    const targetSession = sessionRef.current ?? initialSession;
+    if (!targetSession) {
       throw new Error('Either config or initialSession must be provided');
     }
     if (sessionRef.current) {
@@ -336,19 +334,10 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       return;
     }
 
-    try {
-      setIsConnecting(true);
-      console.log('[AegisChat] Fetching chat session...');
-      const result = await chatApi.connect({ role, client_id: clientId });
-      console.log('[AegisChat] Chat session received:', result);
-      setSession(result.data);
-      setIsConnecting(false);
-    } catch (error) {
-      console.error('[AegisChat] Failed to get chat session:', error);
-      setIsConnecting(false);
-      throw error;
-    }
-  }, [role, clientId, connectWebSocket]);
+    // If initialSession was provided but sessionRef wasn't set yet, use it directly
+    console.log('[AegisChat] Using initialSession, calling connectWebSocket directly');
+    connectWebSocket();
+  }, [connectWebSocket]);
 
   const disconnect = useCallback(() => {
     isManualDisconnect.current = true;
@@ -655,10 +644,8 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     setMessages((prev) => prev.filter((m) => m.tempId !== tempId));
   }, []);
 
-  // Effects
-  useEffect(() => {
-    connect();
-  }, []);
+  // Note: connect() is called by the wrapper hook, not automatically.
+  // This allows the wrapper to fetch the session externally first.
 
   useEffect(() => {
     if (session && !isConnected && !isConnecting && autoConnect) {

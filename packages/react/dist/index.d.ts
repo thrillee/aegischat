@@ -161,9 +161,10 @@ interface ChannelsResponse {
 }
 
 interface UseChatOptions {
-    config: AegisConfig;
+    config?: AegisConfig;
     role: 'lawyer' | 'client';
     clientId?: string;
+    initialSession?: ChatSession | null;
     autoConnect?: boolean;
     onMessage?: (message: Message) => void;
     onTyping?: (channelId: string, user: TypingUser) => void;
