@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { chatApi, channelsApi, messagesApi, filesApi } from '../services/api';
+import { chatApi, channelsApi, messagesApi, filesApi, configureApiClient } from '../services/api';
 import type {
   AegisConfig,
   ChatSession,
@@ -89,6 +89,14 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   const activeChannelIdRef = useRef<string | null>(null);
   const configRef = useRef(config);
   const sessionRef = useRef<ChatSession | null>(initialSession ?? null);
+
+  // Configure API client when initialSession is provided (so channelsApi/messagesApi/filesApi use correct baseUrl)
+  if (initialSession && !config) {
+    configureApiClient({
+      baseUrl: initialSession.api_url,
+      getAccessToken: async () => sessionRef.current?.access_token || "",
+    });
+  }
 
   useEffect(() => {
     configRef.current = config;
@@ -276,6 +284,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     ws.onopen = () => {
       console.log('[AegisChat] WebSocket connected');
       setIsConnected(true);
+      setIsConnecting(false);
       reconnectAttempts.current = 0;
       onConnectionChange?.(true);
 
@@ -302,6 +311,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     ws.onclose = () => {
       console.log('[AegisChat] WebSocket disconnected');
       setIsConnected(false);
+      setIsConnecting(false);
       clearTimers();
       onConnectionChange?.(false);
 
