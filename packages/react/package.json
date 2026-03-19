@@ -1,5 +1,5 @@
 {
-  "name": "@aegischat/react",
+  "name": "@thrillee/aegischat",
   "version": "0.1.0",
   "description": "AegisChat React SDK - Real-time chat and messaging for your applications",
   "main": "dist/index.js",
@@ -55,6 +55,6 @@
     "directory": "packages/react"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   }
 }

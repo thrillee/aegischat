@@ -470,7 +470,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
                 id: tempId,
                 content: trimmedContent,
                 created_at: now,
-                sender: { id: currentSession.comms_user_id, display_name: 'You', status: 'online' },
+                sender: { id: currentSession.comms_user_id, display_name: 'You', status: 'online' as const },
               },
             }
           : ch
