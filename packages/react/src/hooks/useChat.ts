@@ -25,9 +25,11 @@ const PING_INTERVAL = 30000;
 const SESSION_STORAGE_KEY = '@aegischat/activeChannel';
 
 export interface UseChatOptions {
-  config: AegisConfig;
+  config?: AegisConfig;
   role: 'lawyer' | 'client';
   clientId?: string;
+  
+  initialSession?: ChatSession | null;
   autoConnect?: boolean;
   onMessage?: (message: Message) => void;
   onTyping?: (channelId: string, user: TypingUser) => void;
@@ -63,9 +65,9 @@ export interface UseChatReturn {
 }
 
 export function useChat(options: UseChatOptions): UseChatReturn {
-  const { config, role, clientId, autoConnect = true, onMessage, onTyping, onConnectionChange } = options;
+  const { config, role, clientId, initialSession, autoConnect = true, onMessage, onTyping, onConnectionChange } = options;
 
-  const [session, setSession] = useState<ChatSession | null>(null);
+  const [session, setSession] = useState<ChatSession | null>(initialSession ?? null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeChannelId, setActiveChannelIdState] = useState<string | null>(null);
@@ -325,6 +327,9 @@ export function useChat(options: UseChatOptions): UseChatReturn {
 
   const connect = useCallback(async () => {
     console.log('[AegisChat] connect() called');
+    if (!sessionRef.current && !config) {
+      throw new Error('Either config or initialSession must be provided');
+    }
     if (sessionRef.current) {
       console.log('[AegisChat] Session exists, calling connectWebSocket directly');
       connectWebSocket();
