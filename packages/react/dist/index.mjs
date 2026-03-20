@@ -1072,6 +1072,7 @@ function useChat(options = {}) {
 
 // src/hooks/useAutoRead.ts
 import { useCallback as useCallback2, useEffect as useEffect2, useRef as useRef2 } from "react";
+var SESSION_STORAGE_KEY2 = "@aegischat/activeChannel";
 function useAutoRead(options = {}) {
   const isFocusedRef = useRef2(typeof document !== "undefined" && document.hasFocus());
   const onMarkAsReadRef = useRef2(options.onMarkAsRead);
@@ -1095,8 +1096,8 @@ function useAutoRead(options = {}) {
   const getIsFocused = useCallback2(() => {
     return isFocusedRef.current;
   }, []);
-  const markAsRead = useCallback2(async (channelId) => {
-    if (!isFocusedRef.current) return;
+  const markAsRead = useCallback2(async (channelId, skipFocusCheck = false) => {
+    if (!skipFocusCheck && !isFocusedRef.current) return;
     try {
       await channelsApi.markAsRead(channelId);
       onMarkAsReadRef.current?.(channelId);
@@ -1116,6 +1117,18 @@ function useAutoRead(options = {}) {
       console.error("[AegisChat] useAutoRead: Failed to mark all as read:", error);
     }
   }, []);
+  useEffect2(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        const activeChannelId = sessionStorage.getItem(SESSION_STORAGE_KEY2);
+        if (activeChannelId) {
+          markAsRead(activeChannelId, true);
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [markAsRead]);
   return {
     markAsRead,
     markAllAsRead,

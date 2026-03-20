@@ -5,12 +5,14 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { channelsApi } from '../services/api';
 
+const SESSION_STORAGE_KEY = '@aegischat/activeChannel';
+
 export interface UseAutoReadOptions {
   onMarkAsRead?: (channelId: string) => void;
 }
 
 export interface UseAutoReadReturn {
-  markAsRead: (channelId: string) => Promise<void>;
+  markAsRead: (channelId: string, skipFocusCheck?: boolean) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   /** Returns current focus state - use this getter to avoid stale closures */
   getIsFocused: () => boolean;
@@ -44,8 +46,13 @@ export function useAutoRead(options: UseAutoReadOptions = {}): UseAutoReadReturn
     return isFocusedRef.current;
   }, []);
 
-  const markAsRead = useCallback(async (channelId: string) => {
-    if (!isFocusedRef.current) return;
+  /**
+   * Mark a channel as read
+   * @param channelId - The channel ID to mark as read
+   * @param skipFocusCheck - If true, bypass the focus check (use when user explicitly selects a channel)
+   */
+  const markAsRead = useCallback(async (channelId: string, skipFocusCheck = false) => {
+    if (!skipFocusCheck && !isFocusedRef.current) return;
     try {
       await channelsApi.markAsRead(channelId);
       onMarkAsReadRef.current?.(channelId);
@@ -66,6 +73,22 @@ export function useAutoRead(options: UseAutoReadOptions = {}): UseAutoReadReturn
       console.error('[AegisChat] useAutoRead: Failed to mark all as read:', error);
     }
   }, []);
+
+  // Auto mark as read when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        const activeChannelId = sessionStorage.getItem(SESSION_STORAGE_KEY);
+        if (activeChannelId) {
+          // Skip focus check when tab becomes visible - user is clearly looking at it
+          markAsRead(activeChannelId, true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [markAsRead]);
 
   return { 
     markAsRead, 

@@ -215,7 +215,7 @@ interface UseAutoReadOptions {
     onMarkAsRead?: (channelId: string) => void;
 }
 interface UseAutoReadReturn {
-    markAsRead: (channelId: string) => Promise<void>;
+    markAsRead: (channelId: string, skipFocusCheck?: boolean) => Promise<void>;
     markAllAsRead: () => Promise<void>;
     /** Returns current focus state - use this getter to avoid stale closures */
     getIsFocused: () => boolean;
