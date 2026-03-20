@@ -166,7 +166,9 @@ interface UseChatOptions {
     clientId?: string;
     initialSession?: ChatSession | null;
     autoConnect?: boolean;
-    onMessage?: (message: Message) => void;
+    onMessage?: (message: Message, context: {
+        activeChannelId: string | null;
+    }) => void;
     onTyping?: (channelId: string, user: TypingUser) => void;
     onConnectionChange?: (connected: boolean) => void;
 }
@@ -205,6 +207,7 @@ interface UseChatReturn {
     deleteFailedMessage: (tempId: string) => void;
     markAsRead: (channelId: string) => Promise<void>;
     setup: (options: UseChatOptions) => void;
+    updateChannel: (channelId: string, updates: Partial<ChannelListItem>) => void;
 }
 declare function useChat(options?: Partial<UseChatOptions>): UseChatReturn;
 
@@ -214,6 +217,9 @@ interface UseAutoReadOptions {
 interface UseAutoReadReturn {
     markAsRead: (channelId: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
+    /** Returns current focus state - use this getter to avoid stale closures */
+    getIsFocused: () => boolean;
+    /** @deprecated Use getIsFocused() instead to avoid stale closures in callbacks */
     isFocused: boolean;
 }
 declare function useAutoRead(options?: UseAutoReadOptions): UseAutoReadReturn;
@@ -300,14 +306,14 @@ declare const chatApi: {
     /**
      * Connect to chat session
      */
-    connect(params: ChatConnectParams, signal?: AbortSignal): Promise<ApiResponse<ChatSession>>;
+    connect(params: ChatConnectParams, signal?: AbortSignal): Promise<ChatSession>;
     /**
      * Refresh access token
      */
-    refreshToken(refreshToken: string, signal?: AbortSignal): Promise<ApiResponse<{
+    refreshToken(refreshToken: string, signal?: AbortSignal): Promise<{
         access_token: string;
         expires_in: number;
-    }>>;
+    }>;
 };
 declare const channelsApi: {
     /**
@@ -316,17 +322,17 @@ declare const channelsApi: {
     list(options?: {
         type?: string;
         limit?: number;
-    }, signal?: AbortSignal): Promise<ApiResponse<{
+    }, signal?: AbortSignal): Promise<{
         channels: ChannelListItem[];
-    }>>;
+    }>;
     /**
      * Get channel by ID
      */
-    get(channelId: string, signal?: AbortSignal): Promise<ApiResponse<Channel>>;
+    get(channelId: string, signal?: AbortSignal): Promise<Channel>;
     /**
      * Get or create DM channel
      */
-    getOrCreateDM(userId: string, signal?: AbortSignal): Promise<ApiResponse<Channel>>;
+    getOrCreateDM(userId: string, signal?: AbortSignal): Promise<Channel>;
     /**
      * Create channel
      */
@@ -335,19 +341,19 @@ declare const channelsApi: {
         type?: string;
         description?: string;
         metadata?: Record<string, unknown>;
-    }, signal?: AbortSignal): Promise<ApiResponse<Channel>>;
+    }, signal?: AbortSignal): Promise<Channel>;
     /**
      * Mark channel as read
      */
-    markAsRead(channelId: string, signal?: AbortSignal): Promise<ApiResponse<{
+    markAsRead(channelId: string, signal?: AbortSignal): Promise<{
         unread_count: number;
-    }>>;
+    }>;
     /**
      * Get channel members
      */
-    getMembers(channelId: string, signal?: AbortSignal): Promise<ApiResponse<{
+    getMembers(channelId: string, signal?: AbortSignal): Promise<{
         members: UserSummary[];
-    }>>;
+    }>;
     /**
      * Update channel
      */
@@ -355,7 +361,7 @@ declare const channelsApi: {
         name?: string;
         description?: string;
         metadata?: Record<string, unknown>;
-    }, signal?: AbortSignal): Promise<ApiResponse<Channel>>;
+    }, signal?: AbortSignal): Promise<Channel>;
 };
 declare const messagesApi: {
     /**
@@ -364,7 +370,7 @@ declare const messagesApi: {
     list(channelId: string, options?: {
         limit?: number;
         before?: string;
-    }, signal?: AbortSignal): Promise<ApiResponse<MessagesResponse>>;
+    }, signal?: AbortSignal): Promise<MessagesResponse>;
     /**
      * Send a message
      */
@@ -374,46 +380,46 @@ declare const messagesApi: {
         parent_id?: string;
         metadata?: Record<string, unknown>;
         file_ids?: string[];
-    }, signal?: AbortSignal): Promise<ApiResponse<Message>>;
+    }, signal?: AbortSignal): Promise<Message>;
     /**
      * Update a message
      */
     update(channelId: string, messageId: string, data: {
         content?: string;
         metadata?: Record<string, unknown>;
-    }, signal?: AbortSignal): Promise<ApiResponse<Message>>;
+    }, signal?: AbortSignal): Promise<Message>;
     /**
      * Delete a message
      */
-    delete(channelId: string, messageId: string, signal?: AbortSignal): Promise<ApiResponse<{
+    delete(channelId: string, messageId: string, signal?: AbortSignal): Promise<{
         success: boolean;
-    }>>;
+    }>;
     /**
      * Mark messages as delivered
      */
-    markDelivered(channelId: string, signal?: AbortSignal): Promise<ApiResponse<{
+    markDelivered(channelId: string, signal?: AbortSignal): Promise<{
         success: boolean;
-    }>>;
+    }>;
     /**
      * Mark messages as read
      */
-    markRead(channelId: string, signal?: AbortSignal): Promise<ApiResponse<{
+    markRead(channelId: string, signal?: AbortSignal): Promise<{
         success: boolean;
-    }>>;
+    }>;
 };
 declare const reactionsApi: {
     /**
      * Add reaction to a message
      */
-    add(channelId: string, messageId: string, emoji: string, signal?: AbortSignal): Promise<ApiResponse<{
+    add(channelId: string, messageId: string, emoji: string, signal?: AbortSignal): Promise<{
         reactions: ReactionSummary[];
-    }>>;
+    }>;
     /**
      * Remove reaction from a message
      */
-    remove(channelId: string, messageId: string, emoji: string, signal?: AbortSignal): Promise<ApiResponse<{
+    remove(channelId: string, messageId: string, emoji: string, signal?: AbortSignal): Promise<{
         reactions: ReactionSummary[];
-    }>>;
+    }>;
 };
 declare const filesApi: {
     /**
@@ -423,32 +429,32 @@ declare const filesApi: {
         file_name: string;
         file_type: string;
         file_size: number;
-    }, signal?: AbortSignal): Promise<ApiResponse<UploadUrlResponse>>;
+    }, signal?: AbortSignal): Promise<UploadUrlResponse>;
     /**
      * Confirm file upload
      */
-    confirm(fileId: string, signal?: AbortSignal): Promise<ApiResponse<{
+    confirm(fileId: string, signal?: AbortSignal): Promise<{
         file: FileAttachment;
-    }>>;
+    }>;
     /**
      * Get download URL
      */
-    getDownloadUrl(fileId: string, signal?: AbortSignal): Promise<ApiResponse<{
+    getDownloadUrl(fileId: string, signal?: AbortSignal): Promise<{
         url: string;
         expires_at: string;
-    }>>;
+    }>;
 };
 declare const usersApi: {
     /**
      * Search users
      */
-    search(query: string, signal?: AbortSignal): Promise<ApiResponse<{
+    search(query: string, signal?: AbortSignal): Promise<{
         users: UserSummary[];
-    }>>;
+    }>;
     /**
      * Get user by ID
      */
-    get(userId: string, signal?: AbortSignal): Promise<ApiResponse<UserSummary>>;
+    get(userId: string, signal?: AbortSignal): Promise<UserSummary>;
 };
 
 export { type AegisConfig, type ApiError, type ApiResponse, type Channel, type ChannelListItem, type ChannelType, type ChannelsResponse, type ChatConnectParams, type ChatSession, type FileAttachment, type Message, type MessageMetadata, type MessageStatus, type MessageSummary, type MessageType, type MessagesResponse, type PaginatedResponse, type PaginationMeta, type PaginationParams, type ReactionEvent, type ReactionSummary, type TypingEvent, type TypingUser, type UploadProgress, type UseAutoReadOptions, type UseAutoReadReturn, type UseChannelsOptions, type UseChannelsReturn, type UseChatOptions, type UseChatReturn, type UseFileUploadOptions, type UseMentionsOptions, type UseMessagesOptions, type UseMessagesReturn, type UseReactionsOptions, type UseTypingIndicatorOptions, type UserStatus, type UserSummary, type WebSocketMessage, type WebSocketStatus, channelsApi, chatApi, configureApiClient, filesApi, messagesApi, reactionsApi, useAutoRead, useChannels, useChat, useFileUpload, useMentions, useMessages, useReactions, useTypingIndicator, usersApi };

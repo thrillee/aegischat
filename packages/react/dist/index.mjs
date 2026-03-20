@@ -83,7 +83,7 @@ var channelsApi = {
    * Create channel
    */
   async create(data, signal) {
-    return fetchWithAuth("/api/v1/channels", {
+    return fetchWithAuth("/channels", {
       method: "POST",
       body: JSON.stringify(data),
       signal
@@ -93,7 +93,7 @@ var channelsApi = {
    * Mark channel as read
    */
   async markAsRead(channelId, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/read`, {
+    return fetchWithAuth(`/channels/${channelId}/read`, {
       method: "POST",
       signal
     });
@@ -108,7 +108,7 @@ var channelsApi = {
    * Update channel
    */
   async update(channelId, data, signal) {
-    return fetchWithAuth(`/api/v1/channels/${channelId}`, {
+    return fetchWithAuth(`/channels/${channelId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
       signal
@@ -266,8 +266,12 @@ function useChat(options = {}) {
   const [session, setSession] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const getStoredActiveChannel = () => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem(SESSION_STORAGE_KEY);
+  };
   const [activeChannelId, setActiveChannelIdState] = useState(
-    null
+    getStoredActiveChannel
   );
   const [channels, setChannels] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -296,14 +300,12 @@ function useChat(options = {}) {
   useEffect(() => {
     activeChannelIdRef.current = activeChannelId;
   }, [activeChannelId]);
-  useEffect(() => {
-    activeChannelIdRef.current = activeChannelId;
-  }, [activeChannelId]);
   const getActiveChannelId = useCallback(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem(SESSION_STORAGE_KEY);
   }, []);
   const setActiveChannelId = useCallback((id) => {
+    activeChannelIdRef.current = id;
     setActiveChannelIdState(id);
     if (typeof window !== "undefined") {
       if (id) {
@@ -366,7 +368,7 @@ function useChat(options = {}) {
               if (prev.some((m) => m.id === newMessage.id)) return prev;
               return [...prev, { ...newMessage, status: "delivered" }];
             });
-            onMessageRef.current?.(newMessage);
+            onMessageRef.current?.(newMessage, { activeChannelId: currentActiveChannelId });
           }
           setChannels((prev) => {
             const updated = prev.map(
@@ -573,8 +575,10 @@ function useChat(options = {}) {
     if (!currentSession) return;
     setIsLoadingChannels(true);
     try {
-      const response = await channelsApi.list({});
-      setChannels(response.data.channels || []);
+      const response = await fetchFromComms(
+        "/channels"
+      );
+      setChannels(response.channels || []);
     } catch (error) {
       console.error("[AegisChat] Failed to fetch channels:", error);
     } finally {
@@ -614,12 +618,6 @@ function useChat(options = {}) {
         if (response.oldest_id) {
           oldestMessageId.current = response.oldest_id;
         }
-        await markAsRead(channelId);
-        setChannels(
-          (prev) => prev.map(
-            (ch) => ch.id === channelId ? { ...ch, unread_count: 0 } : ch
-          )
-        );
       } catch (error) {
         console.error("[AegisChat] Failed to load messages:", error);
         setMessages([]);
@@ -638,6 +636,14 @@ function useChat(options = {}) {
       }
     },
     [fetchFromComms]
+  );
+  const updateChannel = useCallback(
+    (channelId, updates) => {
+      setChannels(
+        (prev) => prev.map((ch) => ch.id === channelId ? { ...ch, ...updates } : ch)
+      );
+    },
+    []
   );
   const loadMoreMessages = useCallback(async () => {
     if (!activeChannelId || !hasMoreMessages || isLoadingMessages) return;
@@ -1018,10 +1024,10 @@ function useChat(options = {}) {
   }, [isConnected, channels.length, refreshChannels]);
   useEffect(() => {
     const storedActiveChannel = getActiveChannelId();
-    if (storedActiveChannel && !activeChannelId) {
+    if (isConnected && storedActiveChannel && !activeChannelId) {
       selectChannel(storedActiveChannel);
     }
-  }, [getActiveChannelId, activeChannelId, selectChannel]);
+  }, [getActiveChannelId, activeChannelId, selectChannel, isConnected]);
   useEffect(() => {
     return () => {
       clearTimers();
@@ -1059,19 +1065,26 @@ function useChat(options = {}) {
     retryMessage,
     deleteFailedMessage,
     markAsRead,
+    updateChannel,
     setup
   };
 }
 
 // src/hooks/useAutoRead.ts
-import { useCallback as useCallback2, useEffect as useEffect2, useState as useState2 } from "react";
-var SESSION_STORAGE_KEY2 = "@aegischat/activeChannel";
+import { useCallback as useCallback2, useEffect as useEffect2, useRef as useRef2 } from "react";
 function useAutoRead(options = {}) {
-  const [isFocused, setIsFocused] = useState2(false);
+  const isFocusedRef = useRef2(typeof document !== "undefined" && document.hasFocus());
+  const onMarkAsReadRef = useRef2(options.onMarkAsRead);
   useEffect2(() => {
-    setIsFocused(typeof document !== "undefined" && document.hasFocus());
-    const handleFocus = () => setIsFocused(true);
-    const handleBlur = () => setIsFocused(false);
+    onMarkAsReadRef.current = options.onMarkAsRead;
+  }, [options.onMarkAsRead]);
+  useEffect2(() => {
+    const handleFocus = () => {
+      isFocusedRef.current = true;
+    };
+    const handleBlur = () => {
+      isFocusedRef.current = false;
+    };
     window.addEventListener("focus", handleFocus);
     window.addEventListener("blur", handleBlur);
     return () => {
@@ -1079,57 +1092,54 @@ function useAutoRead(options = {}) {
       window.removeEventListener("blur", handleBlur);
     };
   }, []);
-  useEffect2(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        const activeChannelId = sessionStorage.getItem(SESSION_STORAGE_KEY2);
-        if (activeChannelId) {
-          markAsRead(activeChannelId);
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  const getIsFocused = useCallback2(() => {
+    return isFocusedRef.current;
   }, []);
   const markAsRead = useCallback2(async (channelId) => {
-    if (!isFocused) return;
+    if (!isFocusedRef.current) return;
     try {
       await channelsApi.markAsRead(channelId);
-      options.onMarkAsRead?.(channelId);
+      onMarkAsReadRef.current?.(channelId);
     } catch (error) {
       console.error("[AegisChat] useAutoRead: Failed to mark as read:", error);
     }
-  }, [isFocused, options.onMarkAsRead]);
+  }, []);
   const markAllAsRead = useCallback2(async () => {
-    if (!isFocused) return;
+    if (!isFocusedRef.current) return;
     try {
       const response = await channelsApi.list({});
-      const channels = response.data.channels || [];
+      const channels = response.channels || [];
       await Promise.all(
         channels.filter((ch) => ch.unread_count > 0).map((ch) => channelsApi.markAsRead(ch.id))
       );
     } catch (error) {
       console.error("[AegisChat] useAutoRead: Failed to mark all as read:", error);
     }
-  }, [isFocused]);
-  return { markAsRead, markAllAsRead, isFocused };
+  }, []);
+  return {
+    markAsRead,
+    markAllAsRead,
+    getIsFocused,
+    // Keep for backwards compatibility but warn it is deprecated
+    isFocused: isFocusedRef.current
+  };
 }
 
 // src/hooks/useChannels.ts
-import { useCallback as useCallback3, useEffect as useEffect3, useRef as useRef2, useState as useState3 } from "react";
+import { useCallback as useCallback3, useEffect as useEffect3, useRef as useRef3, useState as useState2 } from "react";
 function useChannels(options = {}) {
   const { type, limit = 20, autoFetch = true, onChannelCreated, onError } = options;
-  const [channels, setChannels] = useState3([]);
-  const [isLoading, setIsLoading] = useState3(false);
-  const [error, setError] = useState3(null);
-  const abortControllerRef = useRef2(null);
+  const [channels, setChannels] = useState2([]);
+  const [isLoading, setIsLoading] = useState2(false);
+  const [error, setError] = useState2(null);
+  const abortControllerRef = useRef3(null);
   const fetchChannels = useCallback3(async (signal) => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await channelsApi.list({ type, limit }, signal);
       if (signal?.aborted) return;
-      setChannels(response.data.channels);
+      setChannels(response.channels);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
       const error2 = err instanceof Error ? err : new Error("Failed to fetch channels");
@@ -1152,8 +1162,8 @@ function useChannels(options = {}) {
       const controller = new AbortController();
       abortControllerRef.current = controller;
       fetchChannels(controller.signal);
-      onChannelCreated?.(response.data);
-      return response.data;
+      onChannelCreated?.(response);
+      return response;
     } catch (err) {
       const error2 = err instanceof Error ? err : new Error("Failed to create DM");
       onError?.(error2);
@@ -1183,11 +1193,11 @@ function useChannels(options = {}) {
 }
 
 // src/hooks/useMessages.ts
-import { useCallback as useCallback4, useState as useState4 } from "react";
+import { useCallback as useCallback4, useState as useState3 } from "react";
 function useMessages(_options) {
-  const [messages, setMessages] = useState4([]);
-  const [isLoading, setIsLoading] = useState4(false);
-  const [hasMore, setHasMore] = useState4(true);
+  const [messages, setMessages] = useState3([]);
+  const [isLoading, setIsLoading] = useState3(false);
+  const [hasMore, setHasMore] = useState3(true);
   const sendMessage = useCallback4(async (params) => {
   }, []);
   const loadMore = useCallback4(async () => {
@@ -1196,9 +1206,9 @@ function useMessages(_options) {
 }
 
 // src/hooks/useTypingIndicator.ts
-import { useCallback as useCallback5, useState as useState5 } from "react";
+import { useCallback as useCallback5, useState as useState4 } from "react";
 function useTypingIndicator(_options) {
-  const [typingUsers, setTypingUsers] = useState5([]);
+  const [typingUsers, setTypingUsers] = useState4([]);
   const startTyping = useCallback5(() => {
   }, []);
   const stopTyping = useCallback5(() => {
@@ -1207,9 +1217,9 @@ function useTypingIndicator(_options) {
 }
 
 // src/hooks/useReactions.ts
-import { useState as useState6 } from "react";
+import { useState as useState5 } from "react";
 function useReactions(_options) {
-  const [reactions, setReactions] = useState6([]);
+  const [reactions, setReactions] = useState5([]);
   const addReaction = async (_emoji) => {
   };
   const removeReaction = async (_emoji) => {
@@ -1218,9 +1228,9 @@ function useReactions(_options) {
 }
 
 // src/hooks/useFileUpload.ts
-import { useState as useState7 } from "react";
+import { useState as useState6 } from "react";
 function useFileUpload(_options) {
-  const [uploadProgress, setUploadProgress] = useState7([]);
+  const [uploadProgress, setUploadProgress] = useState6([]);
   const upload = async (_file) => null;
   return { uploadProgress, upload };
 }

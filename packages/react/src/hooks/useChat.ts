@@ -37,7 +37,7 @@ export interface UseChatOptions {
 
   initialSession?: ChatSession | null;
   autoConnect?: boolean;
-  onMessage?: (message: Message) => void;
+  onMessage?: (message: Message, context: { activeChannelId: string | null }) => void;
   onTyping?: (channelId: string, user: TypingUser) => void;
   onConnectionChange?: (connected: boolean) => void;
 }
@@ -84,6 +84,7 @@ export interface UseChatReturn {
   deleteFailedMessage: (tempId: string) => void;
   markAsRead: (channelId: string) => Promise<void>;
   setup: (options: UseChatOptions) => void;
+  updateChannel: (channelId: string, updates: Partial<ChannelListItem>) => void;
 }
 
 export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
@@ -101,8 +102,12 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
   const [session, setSession] = useState<ChatSession | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const getStoredActiveChannel = (): string | null => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem(SESSION_STORAGE_KEY);
+  };
   const [activeChannelId, setActiveChannelIdState] = useState<string | null>(
-    null,
+    getStoredActiveChannel,
   );
   const [channels, setChannels] = useState<ChannelListItem[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -126,13 +131,14 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
   const roleRef = useRef<string | undefined>(undefined);
   const clientIdRef = useRef<string | undefined>(undefined);
   const autoConnectRef = useRef(true);
-  const onMessageRef = useRef<(message: Message) => void | undefined>(undefined);
-  const onTypingRef = useRef<((channelId: string, user: TypingUser) => void) | undefined>(undefined);
-  const onConnectionChangeRef = useRef<((connected: boolean) => void) | undefined>(undefined);
-
-  useEffect(() => {
-    activeChannelIdRef.current = activeChannelId;
-  }, [activeChannelId]);
+  const onMessageRef =
+    useRef<((message: Message, context: { activeChannelId: string | null }) => void) | undefined>(undefined);
+  const onTypingRef = useRef<
+    ((channelId: string, user: TypingUser) => void) | undefined
+  >(undefined);
+  const onConnectionChangeRef = useRef<
+    ((connected: boolean) => void) | undefined
+  >(undefined);
 
   useEffect(() => {
     activeChannelIdRef.current = activeChannelId;
@@ -144,6 +150,7 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
   }, []);
 
   const setActiveChannelId = useCallback((id: string | null) => {
+    activeChannelIdRef.current = id;
     setActiveChannelIdState(id);
     if (typeof window !== "undefined") {
       if (id) {
@@ -216,7 +223,7 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
               if (prev.some((m) => m.id === newMessage.id)) return prev;
               return [...prev, { ...newMessage, status: "delivered" }];
             });
-            onMessageRef.current?.(newMessage);
+            onMessageRef.current?.(newMessage, { activeChannelId: currentActiveChannelId });
           }
           setChannels((prev) => {
             const updated = prev.map((ch) =>
@@ -463,8 +470,10 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
 
     setIsLoadingChannels(true);
     try {
-      const response = await channelsApi.list({});
-      setChannels(response.data.channels || []);
+      const response = await fetchFromComms<{ channels: ChannelListItem[] }>(
+        "/channels",
+      );
+      setChannels(response.channels || []);
     } catch (error) {
       console.error("[AegisChat] Failed to fetch channels:", error);
     } finally {
@@ -507,14 +516,6 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
         if (response.oldest_id) {
           oldestMessageId.current = response.oldest_id;
         }
-
-        await markAsRead(channelId);
-
-        setChannels((prev) =>
-          prev.map((ch) =>
-            ch.id === channelId ? { ...ch, unread_count: 0 } : ch,
-          ),
-        );
       } catch (error) {
         console.error("[AegisChat] Failed to load messages:", error);
         setMessages([]);
@@ -534,6 +535,15 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
       }
     },
     [fetchFromComms],
+  );
+
+  const updateChannel = useCallback(
+    (channelId: string, updates: Partial<ChannelListItem>) => {
+      setChannels((prev) =>
+        prev.map((ch) => (ch.id === channelId ? { ...ch, ...updates } : ch)),
+      );
+    },
+    [],
   );
 
   const loadMoreMessages = useCallback(async () => {
@@ -972,9 +982,8 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
 
       if (!config) {
         const url = initialSession.api_url;
-        const normalizedUrl = url.includes('/api/v1') || url.includes('/v')
-          ? url
-          : `${url}/api/v1`;
+        const normalizedUrl =
+          url.includes("/api/v1") || url.includes("/v") ? url : `${url}/api/v1`;
         configureApiClient({
           baseUrl: normalizedUrl,
           getAccessToken: async () => sessionRef.current?.access_token || "",
@@ -1015,10 +1024,11 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
 
   useEffect(() => {
     const storedActiveChannel = getActiveChannelId();
-    if (storedActiveChannel && !activeChannelId) {
+    // Only restore channel selection after connected and session is ready
+    if (isConnected && storedActiveChannel && !activeChannelId) {
       selectChannel(storedActiveChannel);
     }
-  }, [getActiveChannelId, activeChannelId, selectChannel]);
+  }, [getActiveChannelId, activeChannelId, selectChannel, isConnected]);
 
   useEffect(() => {
     return () => {
@@ -1058,6 +1068,7 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
     retryMessage,
     deleteFailedMessage,
     markAsRead,
+    updateChannel,
     setup,
   };
 }

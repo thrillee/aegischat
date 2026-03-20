@@ -38,7 +38,7 @@ export function useChannels(options: UseChannelsOptions = {}): UseChannelsReturn
     try {
       const response = await channelsApi.list({ type, limit }, signal);
       if (signal?.aborted) return;
-      setChannels(response.data.channels);
+      setChannels(response.channels);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       const error = err instanceof Error ? err : new Error('Failed to fetch channels');
@@ -63,8 +63,8 @@ export function useChannels(options: UseChannelsOptions = {}): UseChannelsReturn
       const controller = new AbortController();
       abortControllerRef.current = controller;
       fetchChannels(controller.signal);
-      onChannelCreated?.(response.data);
-      return response.data;
+      onChannelCreated?.(response);
+      return response;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to create DM');
       onError?.(error);

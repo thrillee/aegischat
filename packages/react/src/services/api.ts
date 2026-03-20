@@ -3,7 +3,6 @@
 // ============================================================================
 
 import type {
-  ApiResponse,
   ChatSession,
   ChatConnectParams,
   Channel,
@@ -67,7 +66,7 @@ export const chatApi = {
   async connect(
     params: ChatConnectParams,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<ChatSession>> {
+  ): Promise<ChatSession> {
     return fetchWithAuth("/chat/connect", {
       method: "POST",
       body: JSON.stringify(params),
@@ -81,7 +80,7 @@ export const chatApi = {
   async refreshToken(
     refreshToken: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ access_token: string; expires_in: number }>> {
+  ): Promise<{ access_token: string; expires_in: number }> {
     return fetchWithAuth("/chat/refresh", {
       method: "POST",
       body: JSON.stringify({ refresh_token: refreshToken }),
@@ -97,7 +96,7 @@ export const channelsApi = {
   async list(
     options: { type?: string; limit?: number } = {},
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ channels: ChannelListItem[] }>> {
+  ): Promise<{ channels: ChannelListItem[] }> {
     const params = new URLSearchParams();
     if (options.type) params.append("type", options.type);
     if (options.limit) params.append("limit", String(options.limit));
@@ -111,7 +110,7 @@ export const channelsApi = {
   async get(
     channelId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<Channel>> {
+  ): Promise<Channel> {
     return fetchWithAuth(`/channels/${channelId}`, { signal });
   },
 
@@ -121,7 +120,7 @@ export const channelsApi = {
   async getOrCreateDM(
     userId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<Channel>> {
+  ): Promise<Channel> {
     return fetchWithAuth("/channels/dm", {
       method: "POST",
       body: JSON.stringify({ user_id: userId }),
@@ -140,8 +139,8 @@ export const channelsApi = {
       metadata?: Record<string, unknown>;
     },
     signal?: AbortSignal,
-  ): Promise<ApiResponse<Channel>> {
-    return fetchWithAuth("/api/v1/channels", {
+  ): Promise<Channel> {
+    return fetchWithAuth("/channels", {
       method: "POST",
       body: JSON.stringify(data),
       signal,
@@ -154,8 +153,8 @@ export const channelsApi = {
   async markAsRead(
     channelId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ unread_count: number }>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}/read`, {
+  ): Promise<{ unread_count: number }> {
+    return fetchWithAuth(`/channels/${channelId}/read`, {
       method: "POST",
       signal,
     });
@@ -167,7 +166,7 @@ export const channelsApi = {
   async getMembers(
     channelId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ members: UserSummary[] }>> {
+  ): Promise<{ members: UserSummary[] }> {
     return fetchWithAuth(`/channels/${channelId}/members`, { signal });
   },
 
@@ -182,8 +181,8 @@ export const channelsApi = {
       metadata?: Record<string, unknown>;
     },
     signal?: AbortSignal,
-  ): Promise<ApiResponse<Channel>> {
-    return fetchWithAuth(`/api/v1/channels/${channelId}`, {
+  ): Promise<Channel> {
+    return fetchWithAuth(`/channels/${channelId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
       signal,
@@ -199,7 +198,7 @@ export const messagesApi = {
     channelId: string,
     options: { limit?: number; before?: string } = {},
     signal?: AbortSignal,
-  ): Promise<ApiResponse<MessagesResponse>> {
+  ): Promise<MessagesResponse> {
     const params = new URLSearchParams();
     if (options.limit) params.append("limit", String(options.limit));
     if (options.before) params.append("before", options.before);
@@ -222,7 +221,7 @@ export const messagesApi = {
       file_ids?: string[];
     },
     signal?: AbortSignal,
-  ): Promise<ApiResponse<Message>> {
+  ): Promise<Message> {
     return fetchWithAuth(`/channels/${channelId}/messages`, {
       method: "POST",
       body: JSON.stringify(data),
@@ -238,7 +237,7 @@ export const messagesApi = {
     messageId: string,
     data: { content?: string; metadata?: Record<string, unknown> },
     signal?: AbortSignal,
-  ): Promise<ApiResponse<Message>> {
+  ): Promise<Message> {
     return fetchWithAuth(`/channels/${channelId}/messages/${messageId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -253,7 +252,7 @@ export const messagesApi = {
     channelId: string,
     messageId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ success: boolean }>> {
+  ): Promise<{ success: boolean }> {
     return fetchWithAuth(`/channels/${channelId}/messages/${messageId}`, {
       method: "DELETE",
       signal,
@@ -266,7 +265,7 @@ export const messagesApi = {
   async markDelivered(
     channelId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ success: boolean }>> {
+  ): Promise<{ success: boolean }> {
     return fetchWithAuth(`/channels/${channelId}/messages/delivered`, {
       method: "POST",
       signal,
@@ -279,7 +278,7 @@ export const messagesApi = {
   async markRead(
     channelId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ success: boolean }>> {
+  ): Promise<{ success: boolean }> {
     return fetchWithAuth(`/channels/${channelId}/messages/read`, {
       method: "POST",
       signal,
@@ -296,7 +295,7 @@ export const reactionsApi = {
     messageId: string,
     emoji: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ reactions: ReactionSummary[] }>> {
+  ): Promise<{ reactions: ReactionSummary[] }> {
     return fetchWithAuth(
       `/channels/${channelId}/messages/${messageId}/reactions`,
       {
@@ -315,7 +314,7 @@ export const reactionsApi = {
     messageId: string,
     emoji: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ reactions: ReactionSummary[] }>> {
+  ): Promise<{ reactions: ReactionSummary[] }> {
     return fetchWithAuth(
       `/channels/${channelId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
       { method: "DELETE", signal },
@@ -330,7 +329,7 @@ export const filesApi = {
   async getUploadUrl(
     data: { file_name: string; file_type: string; file_size: number },
     signal?: AbortSignal,
-  ): Promise<ApiResponse<UploadUrlResponse>> {
+  ): Promise<UploadUrlResponse> {
     return fetchWithAuth("/files/upload-url", {
       method: "POST",
       body: JSON.stringify(data),
@@ -344,7 +343,7 @@ export const filesApi = {
   async confirm(
     fileId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ file: FileAttachment }>> {
+  ): Promise<{ file: FileAttachment }> {
     return fetchWithAuth("/files", {
       method: "POST",
       body: JSON.stringify({ file_id: fileId }),
@@ -358,7 +357,7 @@ export const filesApi = {
   async getDownloadUrl(
     fileId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ url: string; expires_at: string }>> {
+  ): Promise<{ url: string; expires_at: string }> {
     return fetchWithAuth(`/files/${fileId}/download`, { signal });
   },
 };
@@ -370,7 +369,7 @@ export const usersApi = {
   async search(
     query: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<{ users: UserSummary[] }>> {
+  ): Promise<{ users: UserSummary[] }> {
     return fetchWithAuth(`/users/search?q=${encodeURIComponent(query)}`, {
       signal,
     });
@@ -382,7 +381,7 @@ export const usersApi = {
   async get(
     userId: string,
     signal?: AbortSignal,
-  ): Promise<ApiResponse<UserSummary>> {
+  ): Promise<UserSummary> {
     return fetchWithAuth(`/users/${userId}`, { signal });
   },
 };
