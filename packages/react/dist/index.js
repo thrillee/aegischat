@@ -950,11 +950,15 @@ function useChat(options = {}) {
     typingTimeout.current = setTimeout(stopTyping, TYPING_TIMEOUT);
   }, [stopTyping]);
   const createDMWithUser = (0, import_react.useCallback)(
-    async (userId) => {
+    async (userId, options2) => {
       try {
         const channel = await fetchFromComms("/channels/dm", {
           method: "POST",
-          body: JSON.stringify({ user_id: userId })
+          body: JSON.stringify({
+            user_id: userId,
+            display_name: options2?.displayName,
+            avatar_url: options2?.avatarUrl
+          })
         });
         await refreshChannels();
         return channel.id;

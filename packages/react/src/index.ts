@@ -3,7 +3,7 @@
 // ============================================================================
 
 export { useChat } from './hooks/useChat';
-export type { UseChatOptions, UseChatReturn } from './hooks/useChat';
+export type { UseChatOptions, UseChatReturn, CreateDMOptions } from './hooks/useChat';
 
 export { useAutoRead } from './hooks/useAutoRead';
 export type { UseAutoReadOptions, UseAutoReadReturn } from './hooks/useAutoRead';

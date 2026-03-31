@@ -172,6 +172,13 @@ interface UseChatOptions {
     onTyping?: (channelId: string, user: TypingUser) => void;
     onConnectionChange?: (connected: boolean) => void;
 }
+/** Options for creating a DM with a user */
+interface CreateDMOptions {
+    /** Display name for the other user (used when auto-creating user in comms platform) */
+    displayName?: string;
+    /** Avatar URL for the other user (used when auto-creating user in comms platform) */
+    avatarUrl?: string;
+}
 interface UseChatReturn {
     session: ChatSession | null;
     isConnected: boolean;
@@ -202,7 +209,7 @@ interface UseChatReturn {
     startTyping: () => void;
     stopTyping: () => void;
     refreshChannels: () => Promise<void>;
-    createDMWithUser: (userId: string) => Promise<string | null>;
+    createDMWithUser: (userId: string, options?: CreateDMOptions) => Promise<string | null>;
     retryMessage: (tempId: string) => Promise<void>;
     deleteFailedMessage: (tempId: string) => void;
     markAsRead: (channelId: string) => Promise<void>;
@@ -457,4 +464,4 @@ declare const usersApi: {
     get(userId: string, signal?: AbortSignal): Promise<UserSummary>;
 };
 
-export { type AegisConfig, type ApiError, type ApiResponse, type Channel, type ChannelListItem, type ChannelType, type ChannelsResponse, type ChatConnectParams, type ChatSession, type FileAttachment, type Message, type MessageMetadata, type MessageStatus, type MessageSummary, type MessageType, type MessagesResponse, type PaginatedResponse, type PaginationMeta, type PaginationParams, type ReactionEvent, type ReactionSummary, type TypingEvent, type TypingUser, type UploadProgress, type UseAutoReadOptions, type UseAutoReadReturn, type UseChannelsOptions, type UseChannelsReturn, type UseChatOptions, type UseChatReturn, type UseFileUploadOptions, type UseMentionsOptions, type UseMessagesOptions, type UseMessagesReturn, type UseReactionsOptions, type UseTypingIndicatorOptions, type UserStatus, type UserSummary, type WebSocketMessage, type WebSocketStatus, channelsApi, chatApi, configureApiClient, filesApi, messagesApi, reactionsApi, useAutoRead, useChannels, useChat, useFileUpload, useMentions, useMessages, useReactions, useTypingIndicator, usersApi };
+export { type AegisConfig, type ApiError, type ApiResponse, type Channel, type ChannelListItem, type ChannelType, type ChannelsResponse, type ChatConnectParams, type ChatSession, type CreateDMOptions, type FileAttachment, type Message, type MessageMetadata, type MessageStatus, type MessageSummary, type MessageType, type MessagesResponse, type PaginatedResponse, type PaginationMeta, type PaginationParams, type ReactionEvent, type ReactionSummary, type TypingEvent, type TypingUser, type UploadProgress, type UseAutoReadOptions, type UseAutoReadReturn, type UseChannelsOptions, type UseChannelsReturn, type UseChatOptions, type UseChatReturn, type UseFileUploadOptions, type UseMentionsOptions, type UseMessagesOptions, type UseMessagesReturn, type UseReactionsOptions, type UseTypingIndicatorOptions, type UserStatus, type UserSummary, type WebSocketMessage, type WebSocketStatus, channelsApi, chatApi, configureApiClient, filesApi, messagesApi, reactionsApi, useAutoRead, useChannels, useChat, useFileUpload, useMentions, useMessages, useReactions, useTypingIndicator, usersApi };

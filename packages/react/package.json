@@ -1,6 +1,6 @@
 {
   "name": "@thrillee/aegischat",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "AegisChat React SDK - Real-time chat and messaging for your applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

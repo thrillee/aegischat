@@ -42,6 +42,14 @@ export interface UseChatOptions {
   onConnectionChange?: (connected: boolean) => void;
 }
 
+/** Options for creating a DM with a user */
+export interface CreateDMOptions {
+  /** Display name for the other user (used when auto-creating user in comms platform) */
+  displayName?: string;
+  /** Avatar URL for the other user (used when auto-creating user in comms platform) */
+  avatarUrl?: string;
+}
+
 export interface UseChatReturn {
   session: ChatSession | null;
   isConnected: boolean;
@@ -79,7 +87,7 @@ export interface UseChatReturn {
   startTyping: () => void;
   stopTyping: () => void;
   refreshChannels: () => Promise<void>;
-  createDMWithUser: (userId: string) => Promise<string | null>;
+  createDMWithUser: (userId: string, options?: CreateDMOptions) => Promise<string | null>;
   retryMessage: (tempId: string) => Promise<void>;
   deleteFailedMessage: (tempId: string) => void;
   markAsRead: (channelId: string) => Promise<void>;
@@ -891,11 +899,15 @@ export function useChat(options: Partial<UseChatOptions> = {}): UseChatReturn {
   }, [stopTyping]);
 
   const createDMWithUser = useCallback(
-    async (userId: string): Promise<string | null> => {
+    async (userId: string, options?: CreateDMOptions): Promise<string | null> => {
       try {
         const channel = await fetchFromComms<{ id: string }>("/channels/dm", {
           method: "POST",
-          body: JSON.stringify({ user_id: userId }),
+          body: JSON.stringify({
+            user_id: userId,
+            display_name: options?.displayName,
+            avatar_url: options?.avatarUrl,
+          }),
         });
         await refreshChannels();
         return channel.id;
